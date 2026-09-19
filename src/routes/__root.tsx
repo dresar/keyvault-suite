@@ -106,8 +106,8 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
-        <div id="root-app" suppressHydrationWarning className="flex min-h-screen flex-col">
+      <body suppressHydrationWarning className="min-h-screen w-full overflow-x-hidden bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
+        <div id="root-app" suppressHydrationWarning className="flex min-h-screen w-full overflow-x-hidden flex-col">
           {children}
         </div>
         <Scripts />

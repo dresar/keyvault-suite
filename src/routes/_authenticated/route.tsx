@@ -118,7 +118,7 @@ function AuthenticatedLayout() {
 
   if (loading || !user) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="h-1 w-24 animate-pulse rounded-full bg-muted" />
       </div>
     );
@@ -296,7 +296,7 @@ function AuthenticatedLayout() {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       <aside
         className={cn(
           "hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex h-screen overflow-hidden",
@@ -410,7 +410,7 @@ function AuthenticatedLayout() {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-y-auto bg-grid-plus p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-grid-plus p-6">
           <Outlet />
         </main>
       </div>
