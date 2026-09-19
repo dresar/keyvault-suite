@@ -9,11 +9,9 @@ import {
   Eye,
   EyeOff,
   History,
-  KeyRound,
   Lock,
   RefreshCw,
   Save,
-  ShieldCheck,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -44,8 +42,8 @@ import {
 export const Route = createFileRoute("/_authenticated/vault/$id")({
   head: () => ({
     meta: [
-      { title: "Detail Kunci · KeyVault" },
-      { name: "description", content: "Manage and rotate credential." },
+      { title: "Detail · KeyVault" },
+      { name: "description", content: "Credential detail." },
     ],
   }),
   component: KeyDetailPage,
@@ -109,9 +107,9 @@ function KeyDetailPage() {
     try {
       const res = await revealSecret({ data: { id } });
       setRevealedSecret(res.secret);
-      toast.success("Secret dibuka");
+      toast.success("Dibuka");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal membuka secret");
+      toast.error(err instanceof Error ? err.message : "Gagal");
     } finally {
       setRevealing(false);
     }
@@ -128,7 +126,7 @@ function KeyDetailPage() {
   const handleRotate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rotateSecretInput.trim()) {
-      toast.error("Secret baru wajib diisi");
+      toast.error("Wajib diisi");
       return;
     }
 
@@ -137,7 +135,7 @@ function KeyDetailPage() {
       await rotateSecret({
         data: { id, newSecret: rotateSecretInput.trim() },
       });
-      toast.success("Secret berhasil dirotasi");
+      toast.success("Dirotasi");
       setRotateSecretInput("");
       setShowRotateForm(false);
       setRevealedSecret(null);
@@ -146,7 +144,7 @@ function KeyDetailPage() {
       qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
       qc.invalidateQueries({ queryKey: ["neon-activity"] });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal rotasi");
+      toast.error(err instanceof Error ? err.message : "Gagal");
     } finally {
       setRotating(false);
     }
@@ -155,7 +153,7 @@ function KeyDetailPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error("Nama wajib diisi");
+      toast.error("Nama wajib");
       return;
     }
 
@@ -180,38 +178,38 @@ function KeyDetailPage() {
         },
       });
 
-      toast.success("Perubahan tersimpan");
+      toast.success("Tersimpan");
       refetch();
       qc.invalidateQueries({ queryKey: ["neon-keys"] });
       qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menyimpan");
+      toast.error(err instanceof Error ? err.message : "Gagal");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Hapus kunci ini dari vault?")) return;
+    if (!window.confirm("Hapus kunci ini?")) return;
     setDeleting(true);
     try {
       await deleteKey({ data: { id } });
-      toast.success("Kunci dihapus");
+      toast.success("Dihapus");
       qc.invalidateQueries({ queryKey: ["neon-keys"] });
       qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
       navigate({ to: "/vault" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menghapus");
+      toast.error(err instanceof Error ? err.message : "Gagal");
       setDeleting(false);
     }
   };
 
   if (isLoading || !data?.key) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8 space-y-4">
-        <Skeleton className="h-12 w-64 rounded-lg" />
-        <Skeleton className="h-44 w-full rounded-xl" />
-        <Skeleton className="h-80 w-full rounded-xl" />
+      <div className="mx-auto max-w-3xl px-3 sm:px-4 py-6 space-y-4">
+        <Skeleton className="h-10 w-48 rounded-lg" />
+        <Skeleton className="h-32 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
@@ -227,35 +225,34 @@ function KeyDetailPage() {
   const collections = (data.collections ?? []) as Array<{ id: string; name: string }>;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+    <div className="mx-auto max-w-3xl px-3 sm:px-4 py-4 sm:py-6 space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5">
           <Link
             to="/vault"
-            className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-3.5" />
           </Link>
-          <div className="flex items-center gap-3">
-            <ProviderIcon
-              name={String(keyData['provider_name'] || "")}
-              slug={String(keyData['provider_slug'] || "")}
-              iconUrl={keyData['icon_url'] as string | null}
-              className="size-8"
-            />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-foreground">
-                  {String(keyData['name'] || "")}
-                </h1>
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  {String(keyData['secret_hint'] || "")}
-                </Badge>
-                <StatusBadge row={{ status: String(keyData['status'] || "active"), expires_at: null }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {String(keyData['provider_name'] || "")} • Versi {Number(keyData['version'] || 1)}
-              </p>
+          <ProviderIcon
+            name={String(keyData['provider_name'] || "")}
+            slug={String(keyData['provider_slug'] || "")}
+            iconUrl={keyData['icon_url'] as string | null}
+            size="sm"
+            className="size-7 shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-foreground truncate">
+              {String(keyData['name'] || "")}
+            </h1>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
+                {String(keyData['provider_name'] || "")}
+              </span>
+              <Badge variant="outline" className="font-mono text-[9px] px-1 py-0 h-4 shrink-0">
+                {String(keyData['secret_hint'] || "")}
+              </Badge>
+              <StatusBadge row={{ status: String(keyData['status'] || "active"), expires_at: null }} />
             </div>
           </div>
         </div>
@@ -266,10 +263,10 @@ function KeyDetailPage() {
             variant="outline"
             size="sm"
             onClick={() => setShowRotateForm((s) => !s)}
-            className="h-8 text-xs font-medium gap-1.5 active:scale-[0.98]"
+            className="h-7 text-[11px] font-medium gap-1 active:scale-[0.98]"
           >
-            <RefreshCw className="size-3.5 text-primary" />
-            Rotasi Secret
+            <RefreshCw className="size-3 text-primary" />
+            Rotasi
           </Button>
           <Button
             type="button"
@@ -277,70 +274,67 @@ function KeyDetailPage() {
             size="sm"
             onClick={handleDelete}
             disabled={deleting}
-            className="h-8 text-xs font-medium gap-1.5 active:scale-[0.98]"
+            className="h-7 text-[11px] font-medium gap-1 active:scale-[0.98]"
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-3" />
             Hapus
           </Button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-4">
+      <div className="rounded-xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Lock className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold tracking-tight">Kredensial Rahasia</h2>
+          <div className="flex items-center gap-1.5">
+            <Lock className="size-3.5 text-primary" />
+            <h2 className="text-xs font-semibold tracking-tight">Secret</h2>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleReveal}
             disabled={revealing}
-            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+            className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-foreground px-2"
           >
-            {revealedSecret ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            {revealing ? "Membuka…" : revealedSecret ? "Sembunyikan" : "Buka Secret"}
+            {revealedSecret ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+            {revealing ? "Memuat…" : revealedSecret ? "Tutup" : "Buka"}
           </Button>
         </div>
 
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3">
-          <code className="font-mono text-xs sm:text-sm font-medium break-all text-foreground">
-            {revealedSecret ? revealedSecret : "••••••••••••••••••••••••••••••••••••••••"}
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 p-2.5">
+          <code className="font-mono text-[11px] sm:text-xs font-medium break-all text-foreground min-w-0">
+            {revealedSecret ? revealedSecret : "••••••••••••••••••••••••••••••"}
           </code>
           {revealedSecret && (
             <Button
               variant="outline"
               size="sm"
               onClick={copySecret}
-              className="shrink-0 h-7 text-xs gap-1.5"
+              className="shrink-0 h-6 text-[11px] gap-1 px-2"
             >
               {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-              {copied ? "Tersalin" : "Salin"}
+              {copied ? "OK" : "Salin"}
             </Button>
           )}
         </div>
       </div>
 
       {showRotateForm && (
-        <form onSubmit={handleRotate} className="rounded-xl border border-primary/40 bg-primary/5 p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Rotasi Nilai Secret</h2>
+        <form onSubmit={handleRotate} className="rounded-xl border border-primary/40 bg-primary/5 p-3.5 sm:p-4 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-primary" />
+            <h2 className="text-xs font-semibold tracking-tight">Rotasi Secret</h2>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Memasukkan secret baru akan menyimpan versi baru ke vault dan menonaktifkan secret sebelumnya secara aman.
-          </p>
 
           <div className="space-y-1.5">
-            <Label htmlFor="rotate-secret" className="text-xs font-medium">Nilai Secret Baru</Label>
+            <Label htmlFor="rotate-secret" className="text-[11px] font-medium">Secret baru</Label>
             <Input
               id="rotate-secret"
               type="password"
-              placeholder="sk-proj-new-secret..."
+              placeholder="Secret"
               value={rotateSecretInput}
               onChange={(e) => setRotateSecretInput(e.target.value)}
               required
-              className="h-9 font-mono text-xs"
+              className="h-8 font-mono text-xs"
             />
           </div>
 
@@ -351,7 +345,7 @@ function KeyDetailPage() {
               size="sm"
               onClick={() => setShowRotateForm(false)}
               disabled={rotating}
-              className="h-8 text-xs font-medium"
+              className="h-7 text-[11px] font-medium"
             >
               Batal
             </Button>
@@ -359,36 +353,37 @@ function KeyDetailPage() {
               type="submit"
               size="sm"
               disabled={rotating}
-              className="h-8 text-xs font-medium gap-1.5"
+              className="h-7 text-[11px] font-medium gap-1"
             >
               <RefreshCw className={`size-3 ${rotating ? "animate-spin" : ""}`} />
-              {rotating ? "Memproses…" : "Terapkan Rotasi"}
+              {rotating ? "Memproses…" : "Terapkan"}
             </Button>
           </div>
         </form>
       )}
 
-      <form onSubmit={handleUpdate} className="rounded-xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-semibold tracking-tight border-b border-border/60 pb-3">
-          Informasi & Konfigurasi Kunci
+      <form onSubmit={handleUpdate} className="rounded-xl border border-border/80 bg-card p-3.5 sm:p-5 shadow-xs space-y-3.5">
+        <h2 className="text-xs font-semibold tracking-tight border-b border-border/60 pb-2.5">
+          Konfigurasi
         </h2>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="key-name" className="text-xs font-medium">Nama Kunci</Label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="key-name" className="text-[11px] font-medium">Nama</Label>
             <Input
               id="key-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="h-9 text-xs"
+              placeholder="Nama"
+              className="h-8 text-xs"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Status Kunci</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] font-medium">Status</Label>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -400,11 +395,11 @@ function KeyDetailPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Environment</Label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-[11px] font-medium">Environment</Label>
             <Select value={environment} onValueChange={setEnvironment}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -415,11 +410,11 @@ function KeyDetailPage() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Koleksi</Label>
+          <div className="space-y-1">
+            <Label className="text-[11px] font-medium">Koleksi</Label>
             <Select value={collectionId} onValueChange={setCollectionId}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Tanpa koleksi" />
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Pilih" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Tanpa koleksi</SelectItem>
@@ -433,32 +428,32 @@ function KeyDetailPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="key-actor" className="text-xs font-medium">Consumer / Actor</Label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="key-actor" className="text-[11px] font-medium">Consumer</Label>
             <Input
               id="key-actor"
               value={actor}
               onChange={(e) => setActor(e.target.value)}
-              placeholder="claude-code-cli"
-              className="h-9 text-xs"
+              placeholder="Actor"
+              className="h-8 text-xs"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="key-tags" className="text-xs font-medium">Tags (koma)</Label>
+          <div className="space-y-1">
+            <Label htmlFor="key-tags" className="text-[11px] font-medium">Tags</Label>
             <Input
               id="key-tags"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="ai, prod"
-              className="h-9 text-xs"
+              className="h-8 text-xs"
             />
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="key-desc" className="text-xs font-medium">Deskripsi</Label>
+        <div className="space-y-1">
+          <Label htmlFor="key-desc" className="text-[11px] font-medium">Deskripsi</Label>
           <Textarea
             id="key-desc"
             value={description}
@@ -468,8 +463,8 @@ function KeyDetailPage() {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="key-notes" className="text-xs font-medium">Catatan Teknis</Label>
+        <div className="space-y-1">
+          <Label htmlFor="key-notes" className="text-[11px] font-medium">Catatan</Label>
           <Textarea
             id="key-notes"
             value={notes}
@@ -479,48 +474,46 @@ function KeyDetailPage() {
           />
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/60">
+        <div className="flex items-center justify-end pt-3 border-t border-border/60">
           <Button
             type="submit"
             disabled={saving}
-            className="h-8 text-xs font-medium gap-1.5 active:scale-[0.98]"
+            className="h-7 text-[11px] font-medium gap-1 active:scale-[0.98]"
           >
-            <Save className="size-3.5" />
-            {saving ? "Menyimpan…" : "Simpan Perubahan"}
+            <Save className="size-3" />
+            {saving ? "Menyimpan…" : "Simpan"}
           </Button>
         </div>
       </form>
 
       {versions.length > 0 && (
-        <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-3">
-          <div className="flex items-center gap-2">
-            <History className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold tracking-tight">Riwayat Versi Kunci</h2>
+        <div className="rounded-xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <History className="size-3.5 text-primary" />
+            <h2 className="text-xs font-semibold tracking-tight">Riwayat</h2>
           </div>
 
           <div className="divide-y divide-border">
             {versions.map((v) => (
-              <div key={v.id} className="flex items-center justify-between py-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-mono text-[10px]">
+              <div key={v.id} className="flex items-center justify-between py-1.5 text-[11px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Badge variant="outline" className="font-mono text-[9px] px-1 py-0 h-4 shrink-0">
                     v{v.version}
                   </Badge>
-                  <span className="font-mono text-muted-foreground">{v.secret_hint}</span>
+                  <span className="font-mono text-muted-foreground truncate">{v.secret_hint}</span>
                   <Badge
                     variant="secondary"
-                    className={`text-[10px] ${
+                    className={`text-[9px] px-1 py-0 h-4 shrink-0 ${
                       v.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
                     }`}
                   >
                     {v.status}
                   </Badge>
                 </div>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
                   {new Date(v.created_at).toLocaleDateString("id-ID", {
                     month: "short",
                     day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
                   })}
                 </span>
               </div>
