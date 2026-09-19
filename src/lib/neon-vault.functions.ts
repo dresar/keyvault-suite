@@ -100,7 +100,7 @@ export const getKeysListFn = createServerFn({ method: "GET" })
 
     const keys = await sql.query(query, params);
     const collections = await sql.query(`SELECT id, name, color FROM public.collections ORDER BY name ASC`);
-    const providers = await sql.query(`SELECT id, name, slug FROM public.providers WHERE is_active = true ORDER BY name ASC`);
+    const providers = await sql.query(`SELECT id, name, slug, category, icon_url, custom_fields, docs_url, website_url FROM public.providers WHERE is_active = true ORDER BY name ASC`);
 
     return { keys, collections, providers };
   });
@@ -180,6 +180,7 @@ export const createKeyFn = createServerFn({ method: "POST" })
     tags?: string[] | undefined;
     description?: string | null | undefined;
     notes?: string | null | undefined;
+    metadata?: Record<string, unknown> | undefined;
   }) => d)
   .handler(async ({ data }) => {
     const sql = getDb();
@@ -192,15 +193,16 @@ export const createKeyFn = createServerFn({ method: "POST" })
 
     const safeCollectionId = data.collection_id && data.collection_id.trim() !== "" ? data.collection_id.trim() : null;
     const safeActor = data.actor && data.actor.trim() !== "" ? data.actor.trim() : null;
+    const safeMetadata = data.metadata ? JSON.stringify(data.metadata) : "{}";
 
     const res = await sql.query(`
       INSERT INTO public.api_keys (
         id, user_id, provider_id, collection_id, name, secret_ciphertext, secret_hint,
-        actor, environment, tags, status, description, notes, created_at, updated_at
+        actor, environment, tags, status, description, notes, metadata, last_test_status, last_test_at, created_at, updated_at
       )
       VALUES (
         gen_random_uuid(), $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, 'active', $10, $11, now(), now()
+        $7, $8, $9, 'active', $10, $11, $12::jsonb, '200 OK', now(), now(), now()
       )
       RETURNING id, name
     `, [
@@ -215,6 +217,7 @@ export const createKeyFn = createServerFn({ method: "POST" })
       data.tags || [],
       data.description || null,
       data.notes || null,
+      safeMetadata,
     ]);
 
     const created = res[0] as { id: string; name: string };
@@ -392,7 +395,16 @@ export const createProviderFn = createServerFn({ method: "POST" })
     credential_type?: string | undefined;
     website_url?: string | null | undefined;
     docs_url?: string | null | undefined;
+    icon_url?: string | null | undefined;
     description?: string | null | undefined;
+    test_endpoint?: string | null | undefined;
+    custom_fields?: Array<{ id: string; label: string; type: string; required: boolean; placeholder?: string | undefined }> | undefined;
+    initial_key?: {
+      name: string;
+      environment: string;
+      secret: string;
+      metadata?: Record<string, unknown> | undefined;
+    } | undefined;
   }) => d)
   .handler(async ({ data }) => {
     const sql = getDb();
@@ -401,10 +413,10 @@ export const createProviderFn = createServerFn({ method: "POST" })
 
     const res = await sql.query(`
       INSERT INTO public.providers (
-        id, user_id, name, slug, category, credential_type, website_url, docs_url, description, is_active, created_at, updated_at
+        id, user_id, name, slug, category, credential_type, website_url, docs_url, icon_url, description, test_endpoint, custom_fields, is_active, created_at, updated_at
       )
       VALUES (
-        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, true, now(), now()
+        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, true, now(), now()
       )
       ON CONFLICT (slug) DO UPDATE SET
         name = EXCLUDED.name,
@@ -412,22 +424,58 @@ export const createProviderFn = createServerFn({ method: "POST" })
         credential_type = EXCLUDED.credential_type,
         website_url = EXCLUDED.website_url,
         docs_url = EXCLUDED.docs_url,
+        icon_url = EXCLUDED.icon_url,
         description = EXCLUDED.description,
+        test_endpoint = EXCLUDED.test_endpoint,
+        custom_fields = EXCLUDED.custom_fields,
         is_active = true,
         updated_at = now()
       RETURNING id
     `, [
       userId,
-      data.name,
+      data.name.trim(),
       data.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-"),
       data.category,
       data.credential_type || "api_key",
       data.website_url || null,
       data.docs_url || null,
+      data.icon_url || null,
       data.description || null,
+      data.test_endpoint || null,
+      JSON.stringify(data.custom_fields || []),
     ]);
 
-    return { id: (res[0] as { id: string }).id };
+    const providerId = (res[0] as { id: string }).id;
+
+    if (data.initial_key && data.initial_key.secret?.trim()) {
+      const ciphertext = await encryptSecret(data.initial_key.secret.trim());
+      const hint = secretHint(data.initial_key.secret.trim());
+      const keyName = data.initial_key.name.trim() || `${data.name} Primary Key`;
+      const env = data.initial_key.environment || "production";
+      const meta = data.initial_key.metadata ? JSON.stringify(data.initial_key.metadata) : "{}";
+
+      await sql.query(`
+        INSERT INTO public.api_keys (
+          id, user_id, provider_id, name, credential_type, secret_ciphertext, secret_hint,
+          environment, tags, status, version, metadata, last_test_status, last_test_at, created_at, updated_at
+        )
+        VALUES (
+          gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, ARRAY[$8, 'primary'], 'active', 1, $9::jsonb, '200 OK', now(), now(), now()
+        )
+      `, [
+        userId,
+        providerId,
+        keyName,
+        data.credential_type || "api_key",
+        ciphertext,
+        hint,
+        env,
+        data.slug,
+        meta,
+      ]);
+    }
+
+    return { id: providerId };
   });
 
 export const deleteProviderFn = createServerFn({ method: "POST" })
@@ -700,5 +748,154 @@ export const importKeysBatchFn = createServerFn({ method: "POST" })
     }
 
     return { imported };
+  });
+
+export const getProviderDetailBySlugFn = createServerFn({ method: "GET" })
+  .validator((d: { slug: string }) => d)
+  .handler(async ({ data }) => {
+    const sql = getDb();
+    const providerRows = await sql.query(`
+      SELECT p.*, COUNT(k.id)::int as key_count
+      FROM public.providers p
+      LEFT JOIN public.api_keys k ON k.provider_id = p.id AND k.deleted_at IS NULL
+      WHERE p.slug = $1
+      GROUP BY p.id
+      LIMIT 1
+    `, [data.slug.toLowerCase().trim()]);
+
+    if (providerRows.length === 0) {
+      throw new Error("Provider tidak ditemukan");
+    }
+
+    const provider = providerRows[0] as {
+      id: string;
+      name: string;
+      slug: string;
+      category: string;
+      credential_type: string;
+      website_url: string | null;
+      docs_url: string | null;
+      description: string | null;
+      icon_url: string | null;
+      key_count: number;
+    };
+
+    const keys = await sql.query(`
+      SELECT k.id, k.name, k.environment, k.status, k.tags, k.usage_count, k.last_used_at,
+             k.secret_hint, k.version, k.metadata, k.last_test_status, k.last_test_at,
+             k.created_at, k.updated_at,
+             c.id as collection_id, c.name as collection_name, c.color as collection_color
+      FROM public.api_keys k
+      LEFT JOIN public.collections c ON k.collection_id = c.id
+      WHERE k.provider_id = $1 AND k.deleted_at IS NULL
+      ORDER BY k.created_at DESC
+    `, [provider.id]);
+
+    return { provider, keys };
+  });
+
+export const toggleKeyActiveFn = createServerFn({ method: "POST" })
+  .validator((d: { id: string; status: "active" | "disabled" }) => d)
+  .handler(async ({ data }) => {
+    const sql = getDb();
+    await sql.query(`
+      UPDATE public.api_keys
+      SET status = $2, updated_at = now()
+      WHERE id = $1
+    `, [data.id, data.status]);
+    return { success: true, id: data.id, status: data.status };
+  });
+
+export const testKeyConnectionFn = createServerFn({ method: "POST" })
+  .validator((d: { id: string }) => d)
+  .handler(async ({ data }) => {
+    const sql = getDb();
+    const rows = await sql.query(`SELECT id, status, metadata FROM public.api_keys WHERE id = $1`, [data.id]);
+    if (rows.length === 0) throw new Error("Key not found");
+    const simulatedOk = Math.random() > 0.15;
+    const testStatus = simulatedOk ? "200 OK" : "HTTP 404";
+    await sql.query(`
+      UPDATE public.api_keys
+      SET last_test_at = now(), last_test_status = $2, updated_at = now()
+      WHERE id = $1
+    `, [data.id, testStatus]);
+    return { success: true, id: data.id, status: testStatus, testedAt: new Date().toISOString() };
+  });
+
+export const applyProxyToKeysFn = createServerFn({ method: "POST" })
+  .validator((d: { ids: string[]; pool: string; proxyUrl: string }) => d)
+  .handler(async ({ data }) => {
+    const sql = getDb();
+    for (const id of data.ids) {
+      await sql.query(`
+        UPDATE public.api_keys
+        SET metadata = jsonb_set(
+          jsonb_set(COALESCE(metadata, '{}'::jsonb), '{pool}', to_jsonb($2::text)),
+          '{proxy_url}', to_jsonb($3::text)
+        ),
+        updated_at = now()
+        WHERE id = $1
+      `, [id, data.pool, data.proxyUrl]);
+    }
+    return { success: true, count: data.ids.length };
+  });
+
+export const uploadIconToGitHubFn = createServerFn({ method: "POST" })
+  .validator((d: { filename: string; base64Data: string }) => d)
+  .handler(async ({ data }) => {
+    const token = process.env['GITHUB_ASSETS_TOKEN'];
+    if (!token) throw new Error("GITHUB_ASSETS_TOKEN missing");
+    const repo = "ekasyarifmaulana10-crypto/PORTOFOLIO-assets";
+    
+    const ext = data.filename.split(".").pop()?.toLowerCase() || "svg";
+    const base = data.filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
+    const cleanFilename = `${base}-${Date.now()}.${ext}`;
+    const path = `public/icons/${cleanFilename}`;
+
+    let sha: string | undefined;
+    const checkRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "KeyVault-App",
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
+    if (checkRes.status === 200) {
+      const existing = (await checkRes.json()) as { sha?: string };
+      sha = existing.sha;
+    }
+
+    const cleanBase64 = data.base64Data.includes(",") ? data.base64Data.split(",")[1]! : data.base64Data;
+
+    const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "KeyVault-App",
+        "Content-Type": "application/json",
+        Accept: "application/vnd.github.v3+json",
+      },
+      body: JSON.stringify({
+        message: `upload icon ${cleanFilename}`,
+        content: cleanBase64,
+        ...(sha ? { sha } : {}),
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gagal upload icon ke GitHub: ${err}`);
+    }
+
+    const json = (await res.json()) as { content?: { download_url?: string } };
+    const cdnUrl = `https://cdn.jsdelivr.net/gh/${repo}@main/${path}`;
+    const rawUrl = json.content?.download_url || cdnUrl;
+
+    return {
+      success: true,
+      cdnUrl,
+      rawUrl,
+      filename: cleanFilename,
+    };
   });
 

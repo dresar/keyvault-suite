@@ -8,7 +8,6 @@ import {
   Key,
   Plus,
   RefreshCw,
-  ShieldCheck,
   Terminal,
   Trash2,
 } from "lucide-react";
@@ -22,7 +21,7 @@ import {
   deleteApiTokenFn,
 } from "@/lib/neon-vault.functions";
 
-export const Route = createFileRoute("/_authenticated/api-access")({
+export const Route = createFileRoute("/_authenticated/api-access/")({
   head: () => ({
     meta: [
       { title: "API Access · KeyVault" },
@@ -103,7 +102,7 @@ function ApiAccessPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">

@@ -4,11 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * KeyVault design system — utilitarian developer tool.
- * Light neutral surfaces, hairline borders, coral accent, green status.
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -62,12 +57,12 @@
 :root {
   --radius: 0.5rem;
   --background: oklch(0.99 0.002 90);
-  --foreground: oklch(0.22 0.01 60);
+  --foreground: oklch(0.2 0.01 60);
   --surface: oklch(0.975 0.003 90);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.01 60);
+  --card-foreground: oklch(0.2 0.01 60);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.01 60);
+  --popover-foreground: oklch(0.2 0.01 60);
   --primary: oklch(0.66 0.18 39);
   --primary-foreground: oklch(0.99 0.005 90);
   --secondary: oklch(0.965 0.004 80);
@@ -90,48 +85,48 @@
   --chart-3: oklch(0.6 0.09 240);
   --chart-4: oklch(0.75 0.14 75);
   --chart-5: oklch(0.55 0.012 70);
-  --sidebar: oklch(0.985 0.003 90);
-  --sidebar-foreground: oklch(0.3 0.01 60);
+  --sidebar: oklch(0.99 0.002 90);
+  --sidebar-foreground: oklch(0.25 0.01 60);
   --sidebar-primary: oklch(0.66 0.18 39);
   --sidebar-primary-foreground: oklch(0.99 0.005 90);
-  --sidebar-accent: oklch(0.955 0.012 55);
-  --sidebar-accent-foreground: oklch(0.42 0.12 40);
+  --sidebar-accent: oklch(0.95 0.01 60);
+  --sidebar-accent-foreground: oklch(0.2 0.01 60);
   --sidebar-border: oklch(0.915 0.005 80);
   --sidebar-ring: oklch(0.66 0.18 39);
-  --grid-line: oklch(0.93 0.004 80);
+  --grid-line: oklch(0.92 0.004 80);
 }
 
 .dark {
-  --background: oklch(0.2 0.008 70);
-  --foreground: oklch(0.95 0.004 90);
-  --surface: oklch(0.23 0.008 70);
-  --card: oklch(0.24 0.008 70);
-  --card-foreground: oklch(0.95 0.004 90);
-  --popover: oklch(0.24 0.008 70);
-  --popover-foreground: oklch(0.95 0.004 90);
+  --background: oklch(0.18 0.006 70);
+  --foreground: oklch(0.96 0.004 90);
+  --surface: oklch(0.21 0.006 70);
+  --card: oklch(0.22 0.006 70);
+  --card-foreground: oklch(0.96 0.004 90);
+  --popover: oklch(0.22 0.006 70);
+  --popover-foreground: oklch(0.96 0.004 90);
   --primary: oklch(0.7 0.17 40);
-  --primary-foreground: oklch(0.2 0.01 60);
-  --secondary: oklch(0.28 0.008 70);
-  --secondary-foreground: oklch(0.95 0.004 90);
-  --muted: oklch(0.28 0.008 70);
+  --primary-foreground: oklch(0.18 0.01 60);
+  --secondary: oklch(0.26 0.006 70);
+  --secondary-foreground: oklch(0.96 0.004 90);
+  --muted: oklch(0.26 0.006 70);
   --muted-foreground: oklch(0.68 0.01 80);
-  --accent: oklch(0.3 0.02 50);
-  --accent-foreground: oklch(0.85 0.09 45);
+  --accent: oklch(0.28 0.015 50);
+  --accent-foreground: oklch(0.88 0.09 45);
   --destructive: oklch(0.62 0.19 25);
   --destructive-foreground: oklch(0.98 0.005 90);
   --success: oklch(0.68 0.13 150);
-  --success-foreground: oklch(0.2 0.01 60);
+  --success-foreground: oklch(0.18 0.01 60);
   --warning: oklch(0.78 0.13 75);
-  --warning-foreground: oklch(0.2 0.01 60);
-  --border: oklch(1 0 0 / 10%);
+  --warning-foreground: oklch(0.18 0.01 60);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.7 0.17 40);
-  --sidebar: oklch(0.22 0.008 70);
-  --sidebar-foreground: oklch(0.9 0.004 90);
-  --sidebar-accent: oklch(0.3 0.02 50);
-  --sidebar-accent-foreground: oklch(0.85 0.09 45);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --grid-line: oklch(1 0 0 / 6%);
+  --sidebar: oklch(0.16 0.006 70);
+  --sidebar-foreground: oklch(0.92 0.004 90);
+  --sidebar-accent: oklch(0.24 0.01 60);
+  --sidebar-accent-foreground: oklch(0.96 0.004 90);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --grid-line: oklch(1 0 0 / 8%);
 }
 
 @layer base {
@@ -147,11 +142,12 @@
   }
 }
 
-@utility grid-surface {
-  background-image:
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 32px 32px;
+@utility bg-grid-plus {
+  background-image: url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 24H48M24 0V48' stroke='%23000000' stroke-opacity='0.04' stroke-width='1'/%3E%3Cpath d='M21 24H27M24 21V27' stroke='%23000000' stroke-opacity='0.18' stroke-width='1.2' stroke-linecap='square'/%3E%3C/svg%3E");
+}
+
+.dark .bg-grid-plus {
+  background-image: url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 24H48M24 0V48' stroke='%23ffffff' stroke-opacity='0.04' stroke-width='1'/%3E%3Cpath d='M21 24H27M24 21V27' stroke='%23ffffff' stroke-opacity='0.18' stroke-width='1.2' stroke-linecap='square'/%3E%3C/svg%3E");
 }
 
 @utility hairline {

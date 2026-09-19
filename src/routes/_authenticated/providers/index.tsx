@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProviderIcon } from "@/components/vault/ProviderIcon";
 import { getProvidersPageFn, deleteProviderFn } from "@/lib/neon-vault.functions";
 
-export const Route = createFileRoute("/_authenticated/providers")({
+export const Route = createFileRoute("/_authenticated/providers/")({
   head: () => ({
     meta: [
       { title: "Providers · KeyVault" },
@@ -97,7 +97,7 @@ function ProvidersPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -180,7 +180,11 @@ function ProvidersPage() {
               key={item.id}
               className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md"
             >
-              <div className="space-y-3">
+              <Link
+                to="/providers/$slug"
+                params={{ slug: item.slug }}
+                className="space-y-3 block"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <ProviderIcon
@@ -208,10 +212,14 @@ function ProvidersPage() {
                     {item.description}
                   </p>
                 )}
-              </div>
+              </Link>
 
               <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
+                <Link
+                  to="/providers/$slug"
+                  params={{ slug: item.slug }}
+                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                >
                   <span
                     className={`size-2 rounded-full ${
                       item.key_count > 0 ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
@@ -220,13 +228,13 @@ function ProvidersPage() {
                   <span className="text-xs font-medium text-muted-foreground">
                     {item.key_count} {item.key_count === 1 ? "kunci" : "kunci"}
                   </span>
-                </div>
+                </Link>
 
                 <div className="flex items-center gap-1">
                   <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                    <Link to="/vault/new" search={{ provider: item.id }}>
+                    <Link to="/providers/$slug" params={{ slug: item.slug }}>
                       <KeyRound className="size-3 text-primary" />
-                      Kunci
+                      Connections
                     </Link>
                   </Button>
 
