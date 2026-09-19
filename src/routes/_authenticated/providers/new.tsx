@@ -241,7 +241,7 @@ function NewProviderPage() {
           "";
 
         if (!primarySecret.trim()) {
-          toast.error("Kredensial awal belum diisi");
+          toast.error("Wajib diisi");
           setSubmitting(false);
           return;
         }
@@ -273,7 +273,7 @@ function NewProviderPage() {
         },
       });
 
-      toast.success("Provider dan skema kredensial berhasil disimpan");
+      toast.success("Tersimpan");
       qc.invalidateQueries({ queryKey: ["neon-providers-catalog"] });
       qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
       qc.invalidateQueries({ queryKey: ["neon-keys"] });
@@ -282,7 +282,7 @@ function NewProviderPage() {
         params: { slug: slug.trim().toLowerCase() },
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menyimpan provider");
+      toast.error(err instanceof Error ? err.message : "Gagal");
     } finally {
       setSubmitting(false);
     }
@@ -347,7 +347,7 @@ function NewProviderPage() {
                 id="provider-name"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="Contoh: ImageKit, Resend, Together AI"
+                placeholder="Nama"
                 className="h-9 text-xs"
                 required
               />
@@ -361,7 +361,7 @@ function NewProviderPage() {
                 id="provider-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                placeholder="imagekit"
+                placeholder="Slug"
                 className="h-9 font-mono text-xs"
                 required
               />
@@ -411,7 +411,7 @@ function NewProviderPage() {
               id="provider-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Deskripsi layanan API, fitur utama, atau catatan integrasi..."
+              placeholder="Deskripsi"
               rows={2}
               className="resize-none text-xs"
             />
@@ -436,7 +436,7 @@ function NewProviderPage() {
                 type="url"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://imagekit.io"
+                placeholder="URL"
                 className="h-9 text-xs"
               />
             </div>
@@ -450,7 +450,7 @@ function NewProviderPage() {
                 type="url"
                 value={docsUrl}
                 onChange={(e) => setDocsUrl(e.target.value)}
-                placeholder="https://docs.imagekit.io"
+                placeholder="Dokumentasi"
                 className="h-9 text-xs"
               />
             </div>
@@ -464,7 +464,7 @@ function NewProviderPage() {
                 type="url"
                 value={apiEndpoint}
                 onChange={(e) => setApiEndpoint(e.target.value)}
-                placeholder="https://api.imagekit.io/v1"
+                placeholder="Endpoint"
                 className="h-9 text-xs font-mono"
               />
             </div>
@@ -594,7 +594,7 @@ function NewProviderPage() {
                   <Input
                     value={field.label}
                     onChange={(e) => handleUpdateField(idx, { label: e.target.value })}
-                    placeholder="Nama Bidang"
+                    placeholder="Label"
                     className="h-8 text-xs bg-background"
                   />
                 </div>
@@ -606,7 +606,7 @@ function NewProviderPage() {
                   <Input
                     value={field.id}
                     onChange={(e) => handleUpdateField(idx, { id: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
-                    placeholder="field_key"
+                    placeholder="Kunci"
                     className="h-8 text-xs font-mono bg-background"
                   />
                 </div>
@@ -623,9 +623,9 @@ function NewProviderPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="password" className="text-xs">Password / Secret</SelectItem>
-                      <SelectItem value="text" className="text-xs">Plain Text</SelectItem>
-                      <SelectItem value="url" className="text-xs">URL Endpoint</SelectItem>
+                      <SelectItem value="password" className="text-xs">Password</SelectItem>
+                      <SelectItem value="text" className="text-xs">Text</SelectItem>
+                      <SelectItem value="url" className="text-xs">URL</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -637,7 +637,7 @@ function NewProviderPage() {
                   <Input
                     value={field.placeholder || ""}
                     onChange={(e) => handleUpdateField(idx, { placeholder: e.target.value })}
-                    placeholder="Contoh format input..."
+                    placeholder="Format"
                     className="h-8 text-xs bg-background"
                   />
                 </div>
@@ -706,7 +706,7 @@ function NewProviderPage() {
                   <Input
                     value={initialKeyName}
                     onChange={(e) => setInitialKeyName(e.target.value)}
-                    placeholder="Primary Production Key"
+                    placeholder="Nama"
                     className="h-9 text-xs"
                   />
                 </div>
@@ -750,7 +750,7 @@ function NewProviderPage() {
                           onChange={(e) =>
                             setInitialValues((prev) => ({ ...prev, [f.id]: e.target.value }))
                           }
-                          placeholder={f.placeholder || `Masukkan ${f.label.toLowerCase()}`}
+                          placeholder={f.placeholder || "Nilai"}
                           className="h-9 text-xs pr-9 font-mono"
                         />
                         {isPassword && (
@@ -789,7 +789,7 @@ function NewProviderPage() {
             disabled={submitting}
             className="h-9 px-5 text-xs font-semibold active:scale-[0.98]"
           >
-            {submitting ? "Menyimpan..." : "Daftarkan Provider"}
+            {submitting ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       </form>
