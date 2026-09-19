@@ -199,11 +199,11 @@ export const createKeyFn = createServerFn({ method: "POST" })
     const res = await sql.query(`
       INSERT INTO public.api_keys (
         id, user_id, provider_id, collection_id, name, secret_ciphertext, secret_hint,
-        actor, environment, tags, status, description, notes, metadata, last_test_status, last_test_at, created_at, updated_at
+        actor, environment, tags, status, description, notes, metadata, created_at, updated_at
       )
       VALUES (
         gen_random_uuid(), $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, 'active', $10, $11, $12::jsonb, '200 OK', now(), now(), now()
+        $7, $8, $9, 'active', $10, $11, $12::jsonb, now(), now()
       )
       RETURNING id, name
     `, [
@@ -458,10 +458,10 @@ export const createProviderFn = createServerFn({ method: "POST" })
       await sql.query(`
         INSERT INTO public.api_keys (
           id, user_id, provider_id, name, credential_type, secret_ciphertext, secret_hint,
-          environment, tags, status, version, metadata, last_test_status, last_test_at, created_at, updated_at
+          environment, tags, status, version, metadata, created_at, updated_at
         )
         VALUES (
-          gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, ARRAY[$8, 'primary'], 'active', 1, $9::jsonb, '200 OK', now(), now(), now()
+          gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, ARRAY[$8, 'primary'], 'active', 1, $9::jsonb, now(), now()
         )
       `, [
         userId,
@@ -783,7 +783,7 @@ export const getProviderDetailBySlugFn = createServerFn({ method: "GET" })
 
     const keys = await sql.query(`
       SELECT k.id, k.name, k.environment, k.status, k.tags, k.usage_count, k.last_used_at,
-             k.secret_hint, k.version, k.metadata, k.last_test_status, k.last_test_at,
+             k.secret_hint, k.version, k.metadata,
              k.created_at, k.updated_at,
              c.id as collection_id, c.name as collection_name, c.color as collection_color
       FROM public.api_keys k
@@ -805,40 +805,6 @@ export const toggleKeyActiveFn = createServerFn({ method: "POST" })
       WHERE id = $1
     `, [data.id, data.status]);
     return { success: true, id: data.id, status: data.status };
-  });
-
-export const testKeyConnectionFn = createServerFn({ method: "POST" })
-  .validator((d: { id: string }) => d)
-  .handler(async ({ data }) => {
-    const sql = getDb();
-    const rows = await sql.query(`SELECT id, status, metadata FROM public.api_keys WHERE id = $1`, [data.id]);
-    if (rows.length === 0) throw new Error("Key not found");
-    const simulatedOk = Math.random() > 0.15;
-    const testStatus = simulatedOk ? "200 OK" : "HTTP 404";
-    await sql.query(`
-      UPDATE public.api_keys
-      SET last_test_at = now(), last_test_status = $2, updated_at = now()
-      WHERE id = $1
-    `, [data.id, testStatus]);
-    return { success: true, id: data.id, status: testStatus, testedAt: new Date().toISOString() };
-  });
-
-export const applyProxyToKeysFn = createServerFn({ method: "POST" })
-  .validator((d: { ids: string[]; pool: string; proxyUrl: string }) => d)
-  .handler(async ({ data }) => {
-    const sql = getDb();
-    for (const id of data.ids) {
-      await sql.query(`
-        UPDATE public.api_keys
-        SET metadata = jsonb_set(
-          jsonb_set(COALESCE(metadata, '{}'::jsonb), '{pool}', to_jsonb($2::text)),
-          '{proxy_url}', to_jsonb($3::text)
-        ),
-        updated_at = now()
-        WHERE id = $1
-      `, [id, data.pool, data.proxyUrl]);
-    }
-    return { success: true, count: data.ids.length };
   });
 
 export const uploadIconToGitHubFn = createServerFn({ method: "POST" })

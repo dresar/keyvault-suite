@@ -111,7 +111,7 @@ function NewProviderPage() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [docsUrl, setDocsUrl] = useState("");
   const [iconUrl, setIconUrl] = useState("");
-  const [testEndpoint, setTestEndpoint] = useState("");
+  const [apiEndpoint, setApiEndpoint] = useState("");
   const [description, setDescription] = useState("");
 
   const [customFields, setCustomFields] = useState<CredentialFieldDef[]>([
@@ -266,7 +266,7 @@ function NewProviderPage() {
           website_url: websiteUrl.trim() || null,
           docs_url: docsUrl.trim() || null,
           icon_url: iconUrl.trim() || null,
-          test_endpoint: testEndpoint.trim() || null,
+          test_endpoint: apiEndpoint.trim() || null,
           description: description.trim() || null,
           custom_fields: customFields,
           initial_key: initialKeyPayload,
@@ -457,13 +457,13 @@ function NewProviderPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="provider-endpoint" className="text-xs font-medium">
-                Base API / Test Endpoint
+                Base API URL (Opsional)
               </Label>
               <Input
                 id="provider-endpoint"
                 type="url"
-                value={testEndpoint}
-                onChange={(e) => setTestEndpoint(e.target.value)}
+                value={apiEndpoint}
+                onChange={(e) => setApiEndpoint(e.target.value)}
                 placeholder="https://api.imagekit.io/v1"
                 className="h-9 text-xs font-mono"
               />

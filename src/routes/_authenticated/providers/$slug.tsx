@@ -14,7 +14,6 @@ import {
   KeyRound,
   Pencil,
   Plus,
-  RefreshCw,
   Search,
   Trash2,
 } from "lucide-react";
@@ -28,7 +27,6 @@ import { ProviderIcon } from "@/components/vault/ProviderIcon";
 import {
   getProviderDetailBySlugFn,
   toggleKeyActiveFn,
-  testKeyConnectionFn,
   deleteKeyFn,
 } from "@/lib/neon-vault.functions";
 
@@ -52,8 +50,6 @@ type KeyItem = {
   last_used_at: string | null;
   secret_hint: string | null;
   version: number;
-  last_test_status: string | null;
-  last_test_at: string | null;
   created_at: string;
   updated_at: string;
   collection_id: string | null;
@@ -68,7 +64,6 @@ function ProviderDetailPage() {
 
   const fetchDetail = useServerFn(getProviderDetailBySlugFn);
   const toggleKey = useServerFn(toggleKeyActiveFn);
-  const testKey = useServerFn(testKeyConnectionFn);
   const deleteKey = useServerFn(deleteKeyFn);
 
   const { data, isLoading, refetch } = useQuery({
@@ -84,8 +79,6 @@ function ProviderDetailPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
-  const [testingId, setTestingId] = useState<string | null>(null);
-  const [testingAll, setTestingAll] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filteredKeys = useMemo(() => {
@@ -141,40 +134,6 @@ function ProviderDetailPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menghapus");
     }
-  };
-
-  const handleTestKey = async (id: string) => {
-    setTestingId(id);
-    try {
-      const res = await testKey({ data: { id } });
-      qc.invalidateQueries({ queryKey: ["neon-provider-detail", slug] });
-      if (res.status === "200 OK") {
-        toast.success(`Tes koneksi berhasil (${res.status})`);
-      } else {
-        toast.error(`Tes koneksi gagal: ${res.status}`);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menguji koneksi");
-    } finally {
-      setTestingId(null);
-    }
-  };
-
-  const handleTestAll = async () => {
-    if (rawKeys.length === 0) return;
-    setTestingAll(true);
-    toast.info("Menguji seluruh koneksi...");
-    for (const k of rawKeys) {
-      try {
-        setTestingId(k.id);
-        await testKey({ data: { id: k.id } });
-      } catch {
-      }
-    }
-    setTestingId(null);
-    setTestingAll(false);
-    qc.invalidateQueries({ queryKey: ["neon-provider-detail", slug] });
-    toast.success("Pengujian seluruh koneksi selesai");
   };
 
   const getKeyPortalUrl = () => {
@@ -270,17 +229,6 @@ function ProviderDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestAll}
-              disabled={testingAll}
-              className="h-8 text-xs gap-1.5 font-medium active:scale-[0.98]"
-            >
-              <RefreshCw className={`size-3.5 ${testingAll ? "animate-spin text-primary" : ""}`} />
-              Test All Keys
-            </Button>
-
             <Button asChild size="sm" className="h-8 text-xs gap-1.5 font-semibold active:scale-[0.98]">
               <Link to="/vault/new" search={{ provider: provider.id }}>
                 <Plus className="size-3.5" />
@@ -358,7 +306,6 @@ function ProviderDetailPage() {
             pagedKeys.map((item) => {
               const expanded = Boolean(expandedIds[item.id]);
               const isActive = item.status === "active";
-              const isBusy = testingId === item.id;
               const isCopied = copiedId === item.id;
 
               return (
@@ -414,19 +361,6 @@ function ProviderDetailPage() {
                           >
                             {item.environment}
                           </Badge>
-
-                          {item.last_test_status && (
-                            <Badge
-                              variant="outline"
-                              className={`text-[9px] font-mono py-0 h-4.5 ${
-                                item.last_test_status.includes("200") || item.last_test_status.includes("OK")
-                                  ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5"
-                                  : "border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-500/5"
-                              }`}
-                            >
-                              {item.last_test_status}
-                            </Badge>
-                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
@@ -450,17 +384,6 @@ function ProviderDetailPage() {
                     </div>
 
                     <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleTestKey(item.id)}
-                        disabled={isBusy}
-                        className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                      >
-                        <RefreshCw className={`size-3 ${isBusy ? "animate-spin text-primary" : ""}`} />
-                        Test
-                      </Button>
-
                       <Button
                         asChild
                         variant="ghost"
@@ -496,11 +419,13 @@ function ProviderDetailPage() {
                         <span className="font-mono text-[11px]">{item.id.slice(0, 13)}...</span>
                       </div>
                       <div>
-                        <span className="font-semibold text-foreground">Terakhir Diuji: </span>
+                        <span className="font-semibold text-foreground">Diperbarui: </span>
                         <span>
-                          {item.last_test_at
-                            ? new Date(item.last_test_at).toLocaleTimeString("id-ID")
-                            : "Belum pernah"}
+                          {new Date(item.updated_at).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
                         </span>
                       </div>
                       <div>

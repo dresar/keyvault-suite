@@ -493,7 +493,7 @@ function NewKeyPage() {
                     Production (Live)
                   </SelectItem>
                   <SelectItem value="staging" className="text-xs">
-                    Staging (Testing)
+                    Staging (Pre-release)
                   </SelectItem>
                   <SelectItem value="development" className="text-xs">
                     Development (Local)

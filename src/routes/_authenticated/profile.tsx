@@ -556,7 +556,7 @@ function ProfilePage() {
                 className="h-8 gap-1.5 text-xs text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 shrink-0"
               >
                 <Lock className="size-3.5" />
-                Kunci & Uji PIN Sekarang
+                Kunci Sesi Sekarang
               </Button>
             </div>
           </div>

@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { decryptSecret, encryptSecret, secretHint } from "./crypto.server";
 import { logAudit } from "./audit.server";
-import { testCredential, testingSupported } from "./provider-adapters.server";
 
 const isoDate = z
   .string()
@@ -278,47 +277,6 @@ export const bulkKeyAction = createServerFn({ method: "POST" })
       metadata: { count: affected },
     });
     return { affected };
-  });
-
-export const testKeyConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ ids: z.array(z.string().uuid()).min(1).max(25) }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
-      .from("api_keys")
-      .select("id, name, secret_ciphertext, provider_id")
-      .in("id", data.ids);
-    if (error) throw new Error(error.message);
-
-    const providerIds = [...new Set((rows ?? []).map((r) => r.provider_id))];
-    const { data: providers } = await context.supabase
-      .from("providers")
-      .select("id, slug")
-      .in("id", providerIds);
-    const slugById = new Map((providers ?? []).map((p) => [p.id, p.slug]));
-
-    const results: { id: string; name: string; status: string; detail: string }[] = [];
-    for (const row of rows ?? []) {
-      const slug = slugById.get(row.provider_id) ?? "";
-      let outcome = { status: "unsupported", detail: "Testing is not supported for this provider" };
-      if (testingSupported(slug)) {
-        const secret = await decryptSecret(row.secret_ciphertext);
-        outcome = await testCredential(slug, secret);
-      }
-      await context.supabase
-        .from("api_keys")
-        .update({ last_test_status: outcome.status, last_test_at: new Date().toISOString() })
-        .eq("id", row.id);
-      results.push({ id: row.id, name: row.name, ...outcome });
-    }
-
-    await logAudit({
-      userId: context.userId,
-      action: "key.test",
-      entityType: "api_key",
-      metadata: { count: results.length },
-    });
-    return { results };
   });
 
 const importRow = z.object({
