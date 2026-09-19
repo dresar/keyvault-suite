@@ -1,26 +1,38 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
-  Copy,
   Check,
+  Copy,
   Eye,
   EyeOff,
-  RefreshCw,
-  Trash2,
-  Save,
-  Loader2,
-  ExternalLink,
   History,
+  KeyRound,
+  Lock,
+  RefreshCw,
+  Save,
   ShieldCheck,
+  Sparkles,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ProviderIcon } from "@/components/vault/ProviderIcon";
+import { StatusBadge } from "@/components/vault/StatusBadge";
 import {
   getKeyDetailFn,
   revealKeySecretFn,
@@ -31,7 +43,10 @@ import {
 
 export const Route = createFileRoute("/_authenticated/vault/$id")({
   head: () => ({
-    meta: [{ title: "Detail Kunci · KeyVault" }],
+    meta: [
+      { title: "Detail Kunci · KeyVault" },
+      { name: "description", content: "Manage and rotate credential." },
+    ],
   }),
   component: KeyDetailPage,
 });
@@ -39,9 +54,13 @@ export const Route = createFileRoute("/_authenticated/vault/$id")({
 function KeyDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const fetchDetail = useServerFn(getKeyDetailFn);
+  const revealSecret = useServerFn(revealKeySecretFn);
+  const rotateSecret = useServerFn(rotateKeySecretFn);
+  const updateKey = useServerFn(updateKeyFn);
+  const deleteKey = useServerFn(deleteKeyFn);
 
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -62,87 +81,84 @@ function KeyDetailPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  function loadDetail() {
-    getKeyDetailFn({ data: { id } })
-      .then((res) => {
-        setData(res);
-        const k = (res.key || {}) as Record<string, unknown>;
-        setName(typeof k['name'] === "string" ? k['name'] : "");
-        setEnvironment(typeof k['environment'] === "string" ? k['environment'] : "production");
-        setCollectionId(typeof k['collection_id'] === "string" ? k['collection_id'] : "");
-        setActor(typeof k['actor'] === "string" ? k['actor'] : "");
-        setTags(Array.isArray(k['tags']) ? (k['tags'] as string[]).join(", ") : "");
-        setDescription(typeof k['description'] === "string" ? k['description'] : "");
-        setNotes(typeof k['notes'] === "string" ? k['notes'] : "");
-        setStatus(typeof k['status'] === "string" ? k['status'] : "active");
-      })
-      .catch((err) => {
-        toast.error(err.message || "Gagal memuat");
-        navigate({ to: "/vault" });
-      })
-      .finally(() => setLoading(false));
-  }
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["neon-key-detail", id],
+    queryFn: () => fetchDetail({ data: { id } }),
+  });
 
   useEffect(() => {
-    loadDetail();
-  }, [id]);
+    if (data && data.key) {
+      const k = data.key as Record<string, unknown>;
+      setName(typeof k['name'] === "string" ? k['name'] : "");
+      setEnvironment(typeof k['environment'] === "string" ? k['environment'] : "production");
+      setCollectionId(typeof k['collection_id'] === "string" ? k['collection_id'] : "");
+      setActor(typeof k['actor'] === "string" ? k['actor'] : "");
+      setTags(Array.isArray(k['tags']) ? (k['tags'] as string[]).join(", ") : "");
+      setDescription(typeof k['description'] === "string" ? k['description'] : "");
+      setNotes(typeof k['notes'] === "string" ? k['notes'] : "");
+      setStatus(typeof k['status'] === "string" ? k['status'] : "active");
+    }
+  }, [data]);
 
-  async function handleReveal() {
+  const handleReveal = async () => {
     if (revealedSecret) {
       setRevealedSecret(null);
       return;
     }
     setRevealing(true);
     try {
-      const res = await revealKeySecretFn({ data: { id } });
+      const res = await revealSecret({ data: { id } });
       setRevealedSecret(res.secret);
-      toast.success("Secret dibuka!");
+      toast.success("Secret dibuka");
     } catch (err) {
-      toast.error((err as Error).message || "Gagal membuka");
+      toast.error(err instanceof Error ? err.message : "Gagal membuka secret");
     } finally {
       setRevealing(false);
     }
-  }
+  };
 
-  async function handleCopy() {
-    try {
-      let val = revealedSecret;
-      if (!val) {
-        const res = await revealKeySecretFn({ data: { id } });
-        val = res.secret;
-        setRevealedSecret(val);
-      }
-      await navigator.clipboard.writeText(val);
-      setCopied(true);
-      toast.success("Disalin!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Gagal menyalin");
-    }
-  }
+  const copySecret = () => {
+    if (!revealedSecret) return;
+    navigator.clipboard.writeText(revealedSecret);
+    setCopied(true);
+    toast.success("Tersalin");
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  async function handleRotate(e: React.FormEvent) {
+  const handleRotate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rotateSecretInput.trim()) return;
+    if (!rotateSecretInput.trim()) {
+      toast.error("Secret baru wajib diisi");
+      return;
+    }
+
     setRotating(true);
     try {
-      await rotateKeySecretFn({
+      await rotateSecret({
         data: { id, newSecret: rotateSecretInput.trim() },
       });
-      toast.success("Kunci dirotasi!");
+      toast.success("Secret berhasil dirotasi");
       setRotateSecretInput("");
       setShowRotateForm(false);
       setRevealedSecret(null);
-      loadDetail();
+      refetch();
+      qc.invalidateQueries({ queryKey: ["neon-keys"] });
+      qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["neon-activity"] });
     } catch (err) {
-      toast.error((err as Error).message || "Gagal rotasi");
+      toast.error(err instanceof Error ? err.message : "Gagal rotasi");
     } finally {
       setRotating(false);
     }
-  }
+  };
 
-  async function handleSave(e: React.FormEvent) {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      toast.error("Nama wajib diisi");
+      return;
+    }
+
     setSaving(true);
     try {
       const parsedTags = tags
@@ -150,358 +166,368 @@ function KeyDetailPage() {
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean);
 
-      await updateKeyFn({
+      await updateKey({
         data: {
           id,
           name: name.trim(),
           environment,
-          collection_id: collectionId || null,
-          actor: actor.trim() || null,
+          collection_id: collectionId ? collectionId : null,
+          actor: actor.trim() ? actor.trim() : null,
           tags: parsedTags,
-          description: description.trim() || null,
-          notes: notes.trim() || null,
+          description: description.trim() ? description.trim() : null,
+          notes: notes.trim() ? notes.trim() : null,
           status,
         },
       });
-      toast.success("Tersimpan!");
-      loadDetail();
+
+      toast.success("Perubahan tersimpan");
+      refetch();
+      qc.invalidateQueries({ queryKey: ["neon-keys"] });
+      qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
     } catch (err) {
-      toast.error((err as Error).message || "Gagal menyimpan");
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  async function handleDelete() {
-    if (!window.confirm("Hapus kunci ini?")) return;
+  const handleDelete = async () => {
+    if (!window.confirm("Hapus kunci ini dari vault?")) return;
     setDeleting(true);
     try {
-      await deleteKeyFn({ data: { id } });
-      toast.success("Dihapus!");
+      await deleteKey({ data: { id } });
+      toast.success("Kunci dihapus");
+      qc.invalidateQueries({ queryKey: ["neon-keys"] });
+      qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
       navigate({ to: "/vault" });
     } catch (err) {
-      toast.error((err as Error).message || "Gagal menghapus");
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus");
       setDeleting(false);
     }
-  }
+  };
 
-  if (loading || !data) {
+  if (isLoading || !data?.key) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      <div className="mx-auto max-w-4xl px-4 py-8 space-y-4">
+        <Skeleton className="h-12 w-64 rounded-lg" />
+        <Skeleton className="h-44 w-full rounded-xl" />
+        <Skeleton className="h-80 w-full rounded-xl" />
       </div>
     );
   }
 
-  const k = data.key;
+  const keyData = data.key as Record<string, unknown>;
+  const versions = (data.versions ?? []) as Array<{
+    id: string;
+    version: number;
+    secret_hint: string;
+    status: string;
+    created_at: string;
+  }>;
+  const collections = (data.collections ?? []) as Array<{ id: string; name: string }>;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/vault">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight">{k.name}</h1>
-              <Badge variant={k.status === "active" ? "default" : "secondary"}>
-                {k.status}
-              </Badge>
-              <Badge variant="outline">{k.environment}</Badge>
+          <Link
+            to="/vault"
+            className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          <div className="flex items-center gap-3">
+            <ProviderIcon
+              name={String(keyData['provider_name'] || "")}
+              slug={String(keyData['provider_slug'] || "")}
+              iconUrl={keyData['icon_url'] as string | null}
+              className="size-8"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-foreground">
+                  {String(keyData['name'] || "")}
+                </h1>
+                <Badge variant="outline" className="font-mono text-[10px]">
+                  {String(keyData['secret_hint'] || "")}
+                </Badge>
+                <StatusBadge row={{ status: String(keyData['status'] || "active"), expires_at: null }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {String(keyData['provider_name'] || "")} • Versi {Number(keyData['version'] || 1)}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">{k.provider_name} · Versi {k.version}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRotateForm((s) => !s)}
+            className="h-8 text-xs font-medium gap-1.5 active:scale-[0.98]"
+          >
+            <RefreshCw className="size-3.5 text-primary" />
+            Rotasi Secret
+          </Button>
+          <Button
+            type="button"
             variant="destructive"
             size="sm"
             onClick={handleDelete}
             disabled={deleting}
+            className="h-8 text-xs font-medium gap-1.5 active:scale-[0.98]"
           >
-            {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            <Trash2 className="size-3.5" />
             Hapus
           </Button>
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card p-5 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+      <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="size-4 text-primary" />
-            <span className="text-sm font-medium">Kredensial</span>
+            <Lock className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-tight">Kredensial Rahasia</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReveal}
-              disabled={revealing}
-            >
-              {revealedSecret ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-              {revealedSecret ? "Sembunyikan" : "Buka"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-            >
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              Salin
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowRotateForm(!showRotateForm)}
-            >
-              <RefreshCw className="size-3.5" />
-              Rotasi
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReveal}
+            disabled={revealing}
+            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+          >
+            {revealedSecret ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            {revealing ? "Membuka…" : revealedSecret ? "Sembunyikan" : "Buka Secret"}
+          </Button>
         </div>
 
-        <div className="rounded-md bg-muted/60 p-3 font-mono text-sm break-all">
-          {revealedSecret ? (
-            <span className="text-foreground">{revealedSecret}</span>
-          ) : (
-            <span className="text-muted-foreground">{k.secret_hint || "••••••••••••••••••••"}</span>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3">
+          <code className="font-mono text-xs sm:text-sm font-medium break-all text-foreground">
+            {revealedSecret ? revealedSecret : "••••••••••••••••••••••••••••••••••••••••"}
+          </code>
+          {revealedSecret && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copySecret}
+              className="shrink-0 h-7 text-xs gap-1.5"
+            >
+              {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+              {copied ? "Tersalin" : "Salin"}
+            </Button>
           )}
         </div>
-
-        {showRotateForm && (
-          <form onSubmit={handleRotate} className="rounded-md border p-4 space-y-3 bg-background">
-            <h2 className="text-sm font-semibold">Rotasi Kunci</h2>
-            <div className="space-y-1.5">
-              <Label htmlFor="newSecret">Secret</Label>
-              <Input
-                id="newSecret"
-                type="password"
-                placeholder="Secret"
-                value={rotateSecretInput}
-                onChange={(e) => setRotateSecretInput(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowRotateForm(false)}>
-                Batal
-              </Button>
-              <Button type="submit" size="sm" disabled={rotating}>
-                {rotating ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                Konfirmasi
-              </Button>
-            </div>
-          </form>
-        )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-6">
-          <form onSubmit={handleSave} className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
-            <h2 className="text-base font-semibold">Pengaturan</h2>
+      {showRotateForm && (
+        <form onSubmit={handleRotate} className="rounded-xl border border-primary/40 bg-primary/5 p-5 shadow-sm space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Rotasi Nilai Secret</h2>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Memasukkan secret baru akan menyimpan versi baru ke vault dan menonaktifkan secret sebelumnya secara aman.
+          </p>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="editName">Nama</Label>
-              <Input
-                id="editName"
-                placeholder="Nama"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="rotate-secret" className="text-xs font-medium">Nilai Secret Baru</Label>
+            <Input
+              id="rotate-secret"
+              type="password"
+              placeholder="sk-proj-new-secret..."
+              value={rotateSecretInput}
+              onChange={(e) => setRotateSecretInput(e.target.value)}
+              required
+              className="h-9 font-mono text-xs"
+            />
+          </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="editEnv">Environment</Label>
-                <Select value={environment} onValueChange={setEnvironment}>
-                  <SelectTrigger id="editEnv">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="production">Production</SelectItem>
-                    <SelectItem value="staging">Staging</SelectItem>
-                    <SelectItem value="development">Development</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRotateForm(false)}
+              disabled={rotating}
+              className="h-8 text-xs font-medium"
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={rotating}
+              className="h-8 text-xs font-medium gap-1.5"
+            >
+              <RefreshCw className={`size-3 ${rotating ? "animate-spin" : ""}`} />
+              {rotating ? "Memproses…" : "Terapkan Rotasi"}
+            </Button>
+          </div>
+        </form>
+      )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="editStatus">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="editStatus">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                    <SelectItem value="revoked">Revoked</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+      <form onSubmit={handleUpdate} className="rounded-xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-semibold tracking-tight border-b border-border/60 pb-3">
+          Informasi & Konfigurasi Kunci
+        </h2>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="editCol">Koleksi</Label>
-                <Select value={collectionId} onValueChange={setCollectionId}>
-                  <SelectTrigger id="editCol">
-                    <SelectValue placeholder="Tanpa koleksi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Tanpa koleksi</SelectItem>
-                    {data.collections.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="key-name" className="text-xs font-medium">Nama Kunci</Label>
+            <Input
+              id="key-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="h-9 text-xs"
+            />
+          </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="editActor">Actor</Label>
-                <Input
-                  id="editActor"
-                  placeholder="Actor"
-                  value={actor}
-                  onChange={(e) => setActor(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="editTags">Tags</Label>
-              <Input
-                id="editTags"
-                placeholder="Tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="editDesc">Deskripsi</Label>
-              <Textarea
-                id="editDesc"
-                placeholder="Deskripsi"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="editNotes">Catatan</Label>
-              <Textarea
-                id="editNotes"
-                placeholder="Catatan"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={saving}>
-                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Simpan
-              </Button>
-            </div>
-          </form>
-
-          <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2">
-              <History className="size-4 text-muted-foreground" />
-              <h2 className="text-base font-semibold">Riwayat</h2>
-            </div>
-            {data.versions.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Belum ada versi.</p>
-            ) : (
-              <div className="divide-y text-xs">
-                {data.versions.map((v: any) => (
-                  <div key={v.id} className="flex items-center justify-between py-2.5">
-                    <div>
-                      <p className="font-medium">Versi {v.version}</p>
-                      <p className="font-mono text-muted-foreground">{v.secret_hint || "••••"}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={v.status === "active" ? "default" : "secondary"}>
-                        {v.status}
-                      </Badge>
-                      <p className="text-muted-foreground mt-0.5">
-                        {new Date(v.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Status Kunci</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="disabled">Disabled</SelectItem>
+                <SelectItem value="revoked">Revoked</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-lg border bg-card p-5 shadow-sm space-y-3 text-xs">
-            <h2 className="text-sm font-semibold">Metadata</h2>
-            <div className="space-y-2">
-              <div>
-                <p className="text-muted-foreground">Provider</p>
-                <p className="font-medium">{k.provider_name}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Penggunaan</p>
-                <p className="font-medium">{k.usage_count || 0} kali</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Terakhir Digunakan</p>
-                <p className="font-medium">
-                  {k.last_used_at ? new Date(k.last_used_at).toLocaleString() : "Belum pernah"}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Dibuat</p>
-                <p className="font-medium">{new Date(k.created_at).toLocaleString()}</p>
-              </div>
-            </div>
-
-            {k.website_url && (
-              <div className="pt-2 border-t">
-                <a
-                  href={k.website_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-primary hover:underline"
-                >
-                  <ExternalLink className="size-3" />
-                  Website
-                </a>
-              </div>
-            )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Environment</Label>
+            <Select value={environment} onValueChange={setEnvironment}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="production">Production</SelectItem>
+                <SelectItem value="staging">Staging</SelectItem>
+                <SelectItem value="development">Development</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="rounded-lg border bg-card p-5 shadow-sm space-y-3">
-            <h2 className="text-sm font-semibold">Audit</h2>
-            {data.audits.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Kosong</p>
-            ) : (
-              <div className="space-y-2 text-xs">
-                {data.audits.map((a: any) => (
-                  <div key={a.id} className="border-b pb-2 last:border-0">
-                    <p className="font-medium">{a.action}</p>
-                    <p className="text-muted-foreground">
-                      {new Date(a.created_at).toLocaleString()}
-                    </p>
-                  </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Koleksi</Label>
+            <Select value={collectionId} onValueChange={setCollectionId}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Tanpa koleksi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tanpa koleksi</SelectItem>
+                {collections.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
                 ))}
-              </div>
-            )}
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="key-actor" className="text-xs font-medium">Consumer / Actor</Label>
+            <Input
+              id="key-actor"
+              value={actor}
+              onChange={(e) => setActor(e.target.value)}
+              placeholder="claude-code-cli"
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="key-tags" className="text-xs font-medium">Tags (koma)</Label>
+            <Input
+              id="key-tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="ai, prod"
+              className="h-9 text-xs"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="key-desc" className="text-xs font-medium">Deskripsi</Label>
+          <Textarea
+            id="key-desc"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className="text-xs"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="key-notes" className="text-xs font-medium">Catatan Teknis</Label>
+          <Textarea
+            id="key-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className="text-xs"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/60">
+          <Button
+            type="submit"
+            disabled={saving}
+            className="h-8 text-xs font-medium gap-1.5 active:scale-[0.98]"
+          >
+            <Save className="size-3.5" />
+            {saving ? "Menyimpan…" : "Simpan Perubahan"}
+          </Button>
+        </div>
+      </form>
+
+      {versions.length > 0 && (
+        <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-3">
+          <div className="flex items-center gap-2">
+            <History className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-tight">Riwayat Versi Kunci</h2>
+          </div>
+
+          <div className="divide-y divide-border">
+            {versions.map((v) => (
+              <div key={v.id} className="flex items-center justify-between py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-[10px]">
+                    v{v.version}
+                  </Badge>
+                  <span className="font-mono text-muted-foreground">{v.secret_hint}</span>
+                  <Badge
+                    variant="secondary"
+                    className={`text-[10px] ${
+                      v.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                    }`}
+                  >
+                    {v.status}
+                  </Badge>
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(v.created_at).toLocaleDateString("id-ID", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

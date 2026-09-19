@@ -102,12 +102,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body suppressHydrationWarning>
-        {children}
+      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
+        <div id="root-app" suppressHydrationWarning className="flex min-h-screen flex-col">
+          {children}
+        </div>
         <Scripts />
       </body>
     </html>
@@ -119,9 +121,8 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-right" richColors />
     </QueryClientProvider>
   );
 }

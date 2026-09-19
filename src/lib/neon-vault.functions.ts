@@ -175,11 +175,11 @@ export const createKeyFn = createServerFn({ method: "POST" })
     provider_id: string;
     secret: string;
     environment: string;
-    collection_id?: string | null;
-    actor?: string | null;
-    tags?: string[];
-    description?: string | null;
-    notes?: string | null;
+    collection_id?: string | null | undefined;
+    actor?: string | null | undefined;
+    tags?: string[] | undefined;
+    description?: string | null | undefined;
+    notes?: string | null | undefined;
   }) => d)
   .handler(async ({ data }) => {
     const sql = getDb();
@@ -189,6 +189,9 @@ export const createKeyFn = createServerFn({ method: "POST" })
 
     const ciphertext = await encryptSecret(data.secret);
     const hint = secretHint(data.secret);
+
+    const safeCollectionId = data.collection_id && data.collection_id.trim() !== "" ? data.collection_id.trim() : null;
+    const safeActor = data.actor && data.actor.trim() !== "" ? data.actor.trim() : null;
 
     const res = await sql.query(`
       INSERT INTO public.api_keys (
@@ -203,11 +206,11 @@ export const createKeyFn = createServerFn({ method: "POST" })
     `, [
       userId,
       data.provider_id,
-      data.collection_id || null,
+      safeCollectionId,
       data.name,
       ciphertext,
       hint,
-      data.actor || null,
+      safeActor,
       data.environment,
       data.tags || [],
       data.description || null,
@@ -386,10 +389,10 @@ export const createProviderFn = createServerFn({ method: "POST" })
     name: string;
     slug: string;
     category: string;
-    credential_type: string;
-    website_url?: string | null;
-    docs_url?: string | null;
-    description?: string | null;
+    credential_type?: string | undefined;
+    website_url?: string | null | undefined;
+    docs_url?: string | null | undefined;
+    description?: string | null | undefined;
   }) => d)
   .handler(async ({ data }) => {
     const sql = getDb();
@@ -403,13 +406,22 @@ export const createProviderFn = createServerFn({ method: "POST" })
       VALUES (
         gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, true, now(), now()
       )
+      ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name,
+        category = EXCLUDED.category,
+        credential_type = EXCLUDED.credential_type,
+        website_url = EXCLUDED.website_url,
+        docs_url = EXCLUDED.docs_url,
+        description = EXCLUDED.description,
+        is_active = true,
+        updated_at = now()
       RETURNING id
     `, [
       userId,
       data.name,
       data.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-"),
       data.category,
-      data.credential_type,
+      data.credential_type || "api_key",
       data.website_url || null,
       data.docs_url || null,
       data.description || null,

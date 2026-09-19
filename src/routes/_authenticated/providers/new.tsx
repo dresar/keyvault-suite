@@ -1,23 +1,45 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Plug, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, Sparkles, Plug } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createProviderFn } from "@/lib/neon-vault.functions";
 
 export const Route = createFileRoute("/_authenticated/providers/new")({
   head: () => ({
-    meta: [{ title: "Provider Baru · KeyVault" }],
+    meta: [
+      { title: "New Provider · KeyVault" },
+      { name: "description", content: "Register custom API provider." },
+    ],
   }),
   component: NewProviderPage,
 });
 
+const PRESETS = [
+  { name: "Cohere", slug: "cohere", category: "ai", docs: "https://docs.cohere.com", website: "https://cohere.com" },
+  { name: "Together AI", slug: "together-ai", category: "ai", docs: "https://docs.together.ai", website: "https://together.ai" },
+  { name: "Perplexity", slug: "perplexity", category: "ai", docs: "https://docs.perplexity.ai", website: "https://perplexity.ai" },
+  { name: "Upstash", slug: "upstash", category: "cloud", docs: "https://docs.upstash.com", website: "https://upstash.com" },
+  { name: "Hugging Face", slug: "huggingface", category: "ai", docs: "https://huggingface.co/docs", website: "https://huggingface.co" },
+];
+
 function NewProviderPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const createProvider = useServerFn(createProviderFn);
+
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [category, setCategory] = useState("ai");
@@ -27,26 +49,35 @@ function NewProviderPage() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  function handleNameChange(val: string) {
+  const handleNameChange = (val: string) => {
     setName(val);
     if (!slug) {
       setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
     }
-  }
+  };
 
-  async function handleSubmit(e: React.FormEvent) {
+  const applyPreset = (p: typeof PRESETS[0]) => {
+    setName(p.name);
+    setSlug(p.slug);
+    setCategory(p.category);
+    setDocsUrl(p.docs);
+    setWebsiteUrl(p.website);
+    toast.success("Template diterapkan");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !slug.trim()) {
-      toast.error("Form belum lengkap");
+      toast.error("Nama dan slug wajib diisi");
       return;
     }
 
     setSubmitting(true);
     try {
-      await createProviderFn({
+      await createProvider({
         data: {
           name: name.trim(),
-          slug: slug.trim(),
+          slug: slug.trim().toLowerCase(),
           category,
           credential_type: credentialType,
           website_url: websiteUrl.trim() || null,
@@ -54,126 +85,157 @@ function NewProviderPage() {
           description: description.trim() || null,
         },
       });
-      toast.success("Provider dibuat!");
+
+      toast.success("Provider berhasil dibuat");
+      qc.invalidateQueries({ queryKey: ["neon-providers-catalog"] });
+      qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
       navigate({ to: "/providers" });
     } catch (err) {
-      toast.error((err as Error).message || "Gagal menyimpan");
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-xl px-4 py-8 space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/providers">
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
+        <Link
+          to="/providers"
+          className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+        </Link>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Provider Baru</h1>
-          <p className="text-xs text-muted-foreground">Tambah provider kustom ke katalog.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Tambah Provider</h1>
+          <p className="text-xs text-muted-foreground">Daftarkan provider custom ke dalam katalog vault</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border bg-card p-6 shadow-sm">
+      <div className="space-y-2">
+        <span className="text-xs font-medium text-muted-foreground">Template Cepat</span>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.map((p) => (
+            <button
+              key={p.slug}
+              type="button"
+              onClick={() => applyPreset(p)}
+              className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors active:scale-[0.98]"
+            >
+              <Sparkles className="size-3 text-primary" />
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border/80 bg-card p-6 shadow-sm">
         <div className="space-y-1.5">
-          <Label htmlFor="pName">Nama</Label>
+          <Label htmlFor="provider-name" className="text-xs font-medium">Nama Provider</Label>
           <Input
-            id="pName"
-            placeholder="Nama"
+            id="provider-name"
+            placeholder="Perplexity"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             required
+            autoFocus
+            className="h-9 text-xs"
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="pSlug">Slug</Label>
+          <Label htmlFor="provider-slug" className="text-xs font-medium">Slug Identifikasi</Label>
           <Input
-            id="pSlug"
-            placeholder="Slug"
+            id="provider-slug"
+            placeholder="perplexity"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             required
+            className="h-9 font-mono text-xs"
           />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="pCat">Kategori</Label>
+            <Label className="text-xs font-medium">Kategori</Label>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="pCat">
+              <SelectTrigger className="h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ai">AI</SelectItem>
-                <SelectItem value="coding">Coding</SelectItem>
-                <SelectItem value="cloud">Cloud</SelectItem>
-                <SelectItem value="developer">Developer</SelectItem>
+                <SelectItem value="ai">AI & ML</SelectItem>
+                <SelectItem value="coding">Coding & IDE</SelectItem>
+                <SelectItem value="cloud">Cloud & Infra</SelectItem>
+                <SelectItem value="developer">Developer Tools</SelectItem>
                 <SelectItem value="automation">Automation</SelectItem>
-                <SelectItem value="general">General</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="pType">Tipe</Label>
+            <Label className="text-xs font-medium">Tipe Kredensial</Label>
             <Select value={credentialType} onValueChange={setCredentialType}>
-              <SelectTrigger id="pType">
+              <SelectTrigger className="h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="api_key">API Key</SelectItem>
-                <SelectItem value="token">Token</SelectItem>
-                <SelectItem value="bot_token">Bot Token</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
+                <SelectItem value="oauth_token">OAuth Token</SelectItem>
+                <SelectItem value="secret_pair">Key & Secret Pair</SelectItem>
+                <SelectItem value="connection_string">Connection String</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="pWeb">Website</Label>
-          <Input
-            id="pWeb"
-            type="url"
-            placeholder="URL"
-            value={websiteUrl}
-            onChange={(e) => setWebsiteUrl(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="pDocs">Dokumentasi</Label>
-          <Input
-            id="pDocs"
-            type="url"
-            placeholder="URL"
-            value={docsUrl}
-            onChange={(e) => setDocsUrl(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="pDesc">Deskripsi</Label>
+          <Label htmlFor="provider-desc" className="text-xs font-medium">Deskripsi</Label>
           <Textarea
-            id="pDesc"
-            placeholder="Deskripsi"
+            id="provider-desc"
+            placeholder="Deskripsi singkat provider"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
+            className="text-xs"
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-3">
-          <Button variant="outline" type="button" asChild>
-            <Link to="/providers">Batal</Link>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="provider-website" className="text-xs font-medium">Website URL</Label>
+            <Input
+              id="provider-website"
+              placeholder="https://example.com"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="provider-docs" className="text-xs font-medium">Dokumentasi URL</Label>
+            <Input
+              id="provider-docs"
+              placeholder="https://docs.example.com"
+              value={docsUrl}
+              onChange={(e) => setDocsUrl(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/60">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate({ to: "/providers" })}
+            disabled={submitting}
+            className="h-8 text-xs font-medium active:scale-[0.98]"
+          >
+            Batal
           </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
-            Simpan
+          <Button type="submit" disabled={submitting} className="h-8 text-xs font-medium active:scale-[0.98]">
+            {submitting ? "Menyimpan…" : "Simpan"}
           </Button>
         </div>
       </form>

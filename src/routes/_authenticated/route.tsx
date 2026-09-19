@@ -197,7 +197,7 @@ function AuthenticatedLayout() {
             </kbd>
           </button>
         </header>
-        <main className="grid-surface min-w-0 flex-1">
+        <main className="min-w-0 flex-1 bg-background/95 pb-12">
           <Outlet />
         </main>
       </div>

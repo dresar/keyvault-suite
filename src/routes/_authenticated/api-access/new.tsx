@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Check, Copy, KeyRound, ShieldAlert, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ const ENVIRONMENTS = [
 
 function NewTokenPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const createToken = useServerFn(createApiTokenFn);
 
   const [name, setName] = useState("");
@@ -81,6 +83,8 @@ function NewTokenPage() {
       });
       setCreatedToken(res.token);
       toast.success("Token generated");
+      qc.invalidateQueries({ queryKey: ["neon-api-access"] });
+      qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Creation failed");
     } finally {
