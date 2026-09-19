@@ -19,7 +19,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plug,
-  Search,
   Settings,
   Sun,
   Terminal,
@@ -334,16 +333,6 @@ function AuthenticatedLayout() {
             >
               <Menu className="size-4" />
             </Button>
-            <button
-              onClick={() => navigate({ to: "/providers" })}
-              className="flex h-9 w-64 sm:w-80 items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs text-muted-foreground transition-colors hover:border-ring/50"
-            >
-              <Search className="size-3.5" />
-              <span className="flex-1 text-left truncate">Cari provider & koneksi…</span>
-              <kbd className="hidden rounded border border-border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-                ⌘K
-              </kbd>
-            </button>
           </div>
 
           <div className="flex items-center gap-2.5">

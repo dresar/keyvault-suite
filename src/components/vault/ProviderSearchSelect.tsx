@@ -16,7 +16,7 @@ export function ProviderSearchSelect({
   providers,
   value,
   onChange,
-  placeholder = "Pilih provider",
+  placeholder = "Pilih",
 }: {
   providers: ProviderOption[];
   value: string;
@@ -99,7 +99,7 @@ export function ProviderSearchSelect({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari provider..."
+              placeholder="Cari"
               className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-3 text-xs outline-none focus:border-ring"
               autoFocus
             />
@@ -108,7 +108,7 @@ export function ProviderSearchSelect({
           <div className="max-h-56 overflow-y-auto space-y-0.5 px-1 py-1">
             {filtered.length === 0 ? (
               <p className="py-4 text-center text-xs text-muted-foreground">
-                Provider tidak ditemukan
+                Tidak ada
               </p>
             ) : (
               filtered.map((item) => {

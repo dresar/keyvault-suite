@@ -477,10 +477,10 @@ function NewProviderPage() {
                 {slug && (
                   <button
                     type="button"
-                    onClick={() => setIconUrl(`https://cdn.simpleicons.org/${slug}`)}
+                    onClick={() => setIconUrl(`https://www.google.com/s2/favicons?domain=${slug}.com&sz=128`)}
                     className="text-[10px] text-primary hover:underline font-mono"
                   >
-                    Gunakan CDN SimpleIcons ({slug})
+                    Auto Icon ({slug})
                   </button>
                 )}
               </div>
@@ -492,7 +492,7 @@ function NewProviderPage() {
                     type="url"
                     value={iconUrl}
                     onChange={(e) => setIconUrl(e.target.value)}
-                    placeholder="https://cdn.jsdelivr.net/gh/... atau cdn.simpleicons.org/..."
+                    placeholder="https://example.com/logo.png"
                     className="h-9 text-xs pr-8 font-mono"
                   />
                   {iconUrl && (
