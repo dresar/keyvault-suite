@@ -10,33 +10,128 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicSetupAdminRouteImport } from './routes/api/public/setup-admin'
+import { Route as ApiPublicV1CollectionsRouteImport } from './routes/api/public/v1/collections'
+import { Route as ApiPublicV1ProvidersRouteImport } from './routes/api/public/v1/providers'
+import { Route as ApiPublicV1UsageRouteImport } from './routes/api/public/v1/usage'
+import { Route as ApiPublicV1KeysIndexRouteImport } from './routes/api/public/v1/keys/index'
+import { Route as ApiPublicV1KeysNextRouteImport } from './routes/api/public/v1/keys/next'
+import { Route as ApiPublicV1KeysRandomRouteImport } from './routes/api/public/v1/keys/random'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSetupAdminRoute = ApiPublicSetupAdminRouteImport.update({
+  id: '/api/public/setup-admin',
+  path: '/api/public/setup-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1CollectionsRoute = ApiPublicV1CollectionsRouteImport.update({
+  id: '/api/public/v1/collections',
+  path: '/api/public/v1/collections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1ProvidersRoute = ApiPublicV1ProvidersRouteImport.update({
+  id: '/api/public/v1/providers',
+  path: '/api/public/v1/providers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1UsageRoute = ApiPublicV1UsageRouteImport.update({
+  id: '/api/public/v1/usage',
+  path: '/api/public/v1/usage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1KeysIndexRoute = ApiPublicV1KeysIndexRouteImport.update({
+  id: '/api/public/v1/keys/',
+  path: '/api/public/v1/keys/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1KeysNextRoute = ApiPublicV1KeysNextRouteImport.update({
+  id: '/api/public/v1/keys/next',
+  path: '/api/public/v1/keys/next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1KeysRandomRoute = ApiPublicV1KeysRandomRouteImport.update({
+  id: '/api/public/v1/keys/random',
+  path: '/api/public/v1/keys/random',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/setup-admin': typeof ApiPublicSetupAdminRoute
+  '/api/public/v1/collections': typeof ApiPublicV1CollectionsRoute
+  '/api/public/v1/providers': typeof ApiPublicV1ProvidersRoute
+  '/api/public/v1/usage': typeof ApiPublicV1UsageRoute
+  '/api/public/v1/keys/next': typeof ApiPublicV1KeysNextRoute
+  '/api/public/v1/keys/random': typeof ApiPublicV1KeysRandomRoute
+  '/api/public/v1/keys/': typeof ApiPublicV1KeysIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/setup-admin': typeof ApiPublicSetupAdminRoute
+  '/api/public/v1/collections': typeof ApiPublicV1CollectionsRoute
+  '/api/public/v1/providers': typeof ApiPublicV1ProvidersRoute
+  '/api/public/v1/usage': typeof ApiPublicV1UsageRoute
+  '/api/public/v1/keys/next': typeof ApiPublicV1KeysNextRoute
+  '/api/public/v1/keys/random': typeof ApiPublicV1KeysRandomRoute
+  '/api/public/v1/keys': typeof ApiPublicV1KeysIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/setup-admin': typeof ApiPublicSetupAdminRoute
+  '/api/public/v1/collections': typeof ApiPublicV1CollectionsRoute
+  '/api/public/v1/providers': typeof ApiPublicV1ProvidersRoute
+  '/api/public/v1/usage': typeof ApiPublicV1UsageRoute
+  '/api/public/v1/keys/next': typeof ApiPublicV1KeysNextRoute
+  '/api/public/v1/keys/random': typeof ApiPublicV1KeysRandomRoute
+  '/api/public/v1/keys/': typeof ApiPublicV1KeysIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/api/public/setup-admin'
+    | '/api/public/v1/collections'
+    | '/api/public/v1/providers'
+    | '/api/public/v1/usage'
+    | '/api/public/v1/keys/next'
+    | '/api/public/v1/keys/random'
+    | '/api/public/v1/keys/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/api/public/setup-admin'
+    | '/api/public/v1/collections'
+    | '/api/public/v1/providers'
+    | '/api/public/v1/usage'
+    | '/api/public/v1/keys/next'
+    | '/api/public/v1/keys/random'
+    | '/api/public/v1/keys'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/public/setup-admin'
+    | '/api/public/v1/collections'
+    | '/api/public/v1/providers'
+    | '/api/public/v1/usage'
+    | '/api/public/v1/keys/next'
+    | '/api/public/v1/keys/random'
+    | '/api/public/v1/keys/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicSetupAdminRoute: typeof ApiPublicSetupAdminRoute
+  ApiPublicV1CollectionsRoute: typeof ApiPublicV1CollectionsRoute
+  ApiPublicV1ProvidersRoute: typeof ApiPublicV1ProvidersRoute
+  ApiPublicV1UsageRoute: typeof ApiPublicV1UsageRoute
+  ApiPublicV1KeysNextRoute: typeof ApiPublicV1KeysNextRoute
+  ApiPublicV1KeysRandomRoute: typeof ApiPublicV1KeysRandomRoute
+  ApiPublicV1KeysIndexRoute: typeof ApiPublicV1KeysIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +143,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/setup-admin': {
+      id: '/api/public/setup-admin'
+      path: '/api/public/setup-admin'
+      fullPath: '/api/public/setup-admin'
+      preLoaderRoute: typeof ApiPublicSetupAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/collections': {
+      id: '/api/public/v1/collections'
+      path: '/api/public/v1/collections'
+      fullPath: '/api/public/v1/collections'
+      preLoaderRoute: typeof ApiPublicV1CollectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/providers': {
+      id: '/api/public/v1/providers'
+      path: '/api/public/v1/providers'
+      fullPath: '/api/public/v1/providers'
+      preLoaderRoute: typeof ApiPublicV1ProvidersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/usage': {
+      id: '/api/public/v1/usage'
+      path: '/api/public/v1/usage'
+      fullPath: '/api/public/v1/usage'
+      preLoaderRoute: typeof ApiPublicV1UsageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/keys/': {
+      id: '/api/public/v1/keys/'
+      path: '/api/public/v1/keys'
+      fullPath: '/api/public/v1/keys/'
+      preLoaderRoute: typeof ApiPublicV1KeysIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/keys/next': {
+      id: '/api/public/v1/keys/next'
+      path: '/api/public/v1/keys/next'
+      fullPath: '/api/public/v1/keys/next'
+      preLoaderRoute: typeof ApiPublicV1KeysNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/keys/random': {
+      id: '/api/public/v1/keys/random'
+      path: '/api/public/v1/keys/random'
+      fullPath: '/api/public/v1/keys/random'
+      preLoaderRoute: typeof ApiPublicV1KeysRandomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicSetupAdminRoute: ApiPublicSetupAdminRoute,
+  ApiPublicV1CollectionsRoute: ApiPublicV1CollectionsRoute,
+  ApiPublicV1ProvidersRoute: ApiPublicV1ProvidersRoute,
+  ApiPublicV1UsageRoute: ApiPublicV1UsageRoute,
+  ApiPublicV1KeysNextRoute: ApiPublicV1KeysNextRoute,
+  ApiPublicV1KeysRandomRoute: ApiPublicV1KeysRandomRoute,
+  ApiPublicV1KeysIndexRoute: ApiPublicV1KeysIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
