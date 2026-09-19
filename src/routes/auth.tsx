@@ -37,7 +37,12 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: "/dashboard", replace: true });
+      const isPinVerified = sessionStorage.getItem("keyvault_pin_verified") === "true";
+      if (isPinVerified) {
+        navigate({ to: "/dashboard", replace: true });
+      } else {
+        navigate({ to: "/pin", replace: true });
+      }
     }
   }, [loading, user, navigate]);
 
@@ -50,10 +55,10 @@ function AuthPage() {
       });
       if (res?.success && res?.user && res?.token) {
         setAuthSession(res.user, res.token);
-        toast.success("Welcome back!");
-        navigate({ to: "/dashboard", replace: true });
+        toast.success("Kredensial akun diverifikasi");
+        navigate({ to: "/pin", replace: true });
       } else {
-        throw new Error("Login failed");
+        throw new Error("Login gagal");
       }
     } catch (err) {
       toast.error((err as Error).message || "Invalid email or password");

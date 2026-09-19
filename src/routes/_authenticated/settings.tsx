@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -123,12 +123,24 @@ function SettingsPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end border-t border-border pt-4">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-border pt-4">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+              >
+                <Link to="/profile">
+                  <User className="size-3.5" />
+                  Kelola Profil, Avatar CDN & Kata Sandi
+                </Link>
+              </Button>
+
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={handleSignOut}
-                className="gap-1.5"
+                className="gap-1.5 text-xs"
               >
                 <LogOut className="size-3.5" />
                 Sign out

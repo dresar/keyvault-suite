@@ -4,6 +4,7 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  image?: string | null;
 }
 
 export interface Session {
@@ -25,7 +26,7 @@ function getStoredAuth(): { user: User | null; session: Session | null } {
       return { user, session };
     }
   } catch {
-    // ignore corrupted data
+    return { user: null, session: null };
   }
   return { user: null, session: null };
 }
@@ -36,9 +37,27 @@ export function setAuthSession(user: User, token: string) {
   window.dispatchEvent(new Event("vault-auth-change"));
 }
 
+export function updateUserSession(patch: Partial<User>) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.user) {
+        parsed.user = { ...parsed.user, ...patch };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        window.dispatchEvent(new Event("vault-auth-change"));
+      }
+    }
+  } catch {
+    return;
+  }
+}
+
 export function clearAuthSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem("keyvault_pin_verified");
   window.dispatchEvent(new Event("vault-auth-change"));
 }
 

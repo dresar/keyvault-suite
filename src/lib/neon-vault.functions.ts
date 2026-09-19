@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { neon } from "@neondatabase/serverless";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { encryptSecret, decryptSecret, secretHint, generateApiToken, hashToken } from "./crypto.server";
 
 function getDb() {
@@ -898,4 +899,120 @@ export const uploadIconToGitHubFn = createServerFn({ method: "POST" })
       filename: cleanFilename,
     };
   });
+
+export const verifySecurityPinFn = createServerFn({ method: "POST" })
+  .validator((d: { pin: string }) => d)
+  .handler(async ({ data }) => {
+    const envPin = (process.env['SECURITY_PIN'] || "280219").trim();
+    const inputPin = (data.pin || "").trim();
+    if (inputPin !== envPin) {
+      throw new Error("PIN keamanan tidak valid. Silakan coba lagi.");
+    }
+    return { success: true, verified: true };
+  });
+
+export const getProfileDataFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const sql = getDb();
+    const users = await sql.query(`
+      SELECT id, name, email, image, role, "createdAt"
+      FROM neon_auth.user
+      LIMIT 1
+    `);
+    if (users.length === 0) throw new Error("Pengguna tidak ditemukan");
+    const user = users[0] as {
+      id: string;
+      name: string;
+      email: string;
+      image: string | null;
+      role: string | null;
+      createdAt: string;
+    };
+    return { user };
+  });
+
+export const updateProfileIdentityFn = createServerFn({ method: "POST" })
+  .validator((d: { name: string; email: string; image?: string | null }) => d)
+  .handler(async ({ data }) => {
+    const sql = getDb();
+    const users = await sql.query(`SELECT id, email FROM neon_auth.user LIMIT 1`);
+    if (users.length === 0) throw new Error("Pengguna tidak ditemukan");
+    const userId = (users[0] as { id: string }).id;
+
+    await sql.query(`
+      UPDATE neon_auth.user
+      SET name = $2, email = $3, image = $4, "updatedAt" = now()
+      WHERE id = $1
+    `, [userId, data.name.trim(), data.email.trim(), data.image ? data.image.trim() : null]);
+
+    await sql.query(`
+      UPDATE public.profiles
+      SET display_name = $2, email = $3, updated_at = now()
+      WHERE id = $1
+    `, [userId, data.name.trim(), data.email.trim()]);
+
+    await sql.query(`
+      INSERT INTO public.audit_logs (id, user_id, action, entity_type, entity_id, entity_name, metadata, created_at)
+      VALUES (gen_random_uuid(), $1, 'profile.update', 'user', $1, $2, jsonb_build_object('name', $2::text, 'email', $3::text), now())
+    `, [userId, data.name.trim(), data.email.trim()]);
+
+    return {
+      success: true,
+      user: {
+        id: userId,
+        name: data.name.trim(),
+        email: data.email.trim(),
+        image: data.image ? data.image.trim() : null,
+      },
+    };
+  });
+
+export const updatePasswordFn = createServerFn({ method: "POST" })
+  .validator((d: { currentPassword?: string | undefined; newPassword: string }) => d)
+  .handler(async ({ data }) => {
+    const sql = getDb();
+    const users = await sql.query(`SELECT id, email FROM neon_auth.user LIMIT 1`);
+    if (users.length === 0) throw new Error("Pengguna tidak ditemukan");
+    const userId = (users[0] as { id: string }).id;
+
+    const accounts = await sql.query(`
+      SELECT id, password FROM neon_auth.account
+      WHERE "userId" = $1 AND "providerId" = 'credential'
+    `, [userId]);
+
+    if (accounts.length > 0 && accounts[0] && (accounts[0] as { password: string }).password) {
+      const currentHash = (accounts[0] as { password: string }).password;
+      if (data.currentPassword) {
+        const isValid = await verifyPassword({ password: data.currentPassword, hash: currentHash });
+        if (!isValid) throw new Error("Password saat ini salah");
+      }
+    }
+
+    if (data.newPassword.length < 6) {
+      throw new Error("Password baru minimal 6 karakter");
+    }
+
+    const newHash = await hashPassword(data.newPassword);
+
+    if (accounts.length > 0 && accounts[0]) {
+      await sql.query(`
+        UPDATE neon_auth.account
+        SET password = $2, "updatedAt" = now()
+        WHERE id = $1
+      `, [(accounts[0] as { id: string }).id, newHash]);
+    } else {
+      await sql.query(`
+        INSERT INTO neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), (SELECT email FROM neon_auth.user WHERE id = $1), 'credential', $1, $2, now(), now())
+      `, [userId, newHash]);
+    }
+
+    await sql.query(`
+      INSERT INTO public.audit_logs (id, user_id, action, entity_type, entity_id, entity_name, metadata, created_at)
+      VALUES (gen_random_uuid(), $1, 'password.update', 'user', $1, 'Password Diperbarui', '{}'::jsonb, now())
+    `, [userId]);
+
+    return { success: true };
+  });
+
 
