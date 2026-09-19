@@ -1,6 +1,3 @@
-// AES-256-GCM encryption for credential secrets. The master key never leaves
-// the server environment and is never stored in the database.
-
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -35,7 +32,7 @@ export async function encryptSecret(plaintext: string): Promise<string> {
   const key = await getKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext)),
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv as unknown as BufferSource }, key, encoder.encode(plaintext)),
   );
   return `v1.${toBase64(iv)}.${toBase64(cipher)}`;
 }
@@ -46,11 +43,14 @@ export async function decryptSecret(payload: string): Promise<string> {
   const key = await getKey();
   const iv = fromBase64(parts[1]!);
   const cipher = fromBase64(parts[2]!);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv as unknown as BufferSource },
+    key,
+    cipher as unknown as BufferSource,
+  );
   return decoder.decode(plain);
 }
 
-/** Non-reversible display hint, e.g. "sk-…a91f". Never contains the full secret. */
 export function secretHint(plaintext: string): string {
   const trimmed = plaintext.trim();
   const head = trimmed.slice(0, Math.min(3, Math.max(0, trimmed.length - 4)));

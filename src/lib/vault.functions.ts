@@ -53,7 +53,7 @@ export const createKey = createServerFn({ method: "POST" })
         expires_at: data.expires_at ?? null,
         description: data.description ?? null,
         notes: data.notes ?? null,
-        metadata: data.metadata,
+        metadata: data.metadata as any,
       })
       .select("id, name")
       .single();
@@ -85,7 +85,7 @@ export const updateKey = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { id, ...patch } = data;
-    const { error } = await context.supabase.from("api_keys").update(patch).eq("id", id);
+    const { error } = await context.supabase.from("api_keys").update(patch as any).eq("id", id);
     if (error) throw new Error(error.message);
     await logAudit({
       userId: context.userId,

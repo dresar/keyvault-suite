@@ -20,7 +20,6 @@ import {
   Terminal,
   Vault,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { CommandPalette } from "@/components/vault/CommandPalette";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -49,11 +47,10 @@ const NAV = [
 ] as const;
 
 function AuthenticatedLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
@@ -64,12 +61,12 @@ function AuthenticatedLayout() {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setPaletteOpen((v) => !v);
+        navigate({ to: "/vault" });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [navigate]);
 
   if (loading || !user) {
     return (
@@ -145,8 +142,8 @@ function AuthenticatedLayout() {
             <Settings className="size-4" /> Settings
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={async () => {
-              await supabase.auth.signOut();
+            onSelect={() => {
+              signOut();
               navigate({ to: "/auth", replace: true });
             }}
           >
@@ -190,7 +187,7 @@ function AuthenticatedLayout() {
             <Menu className="size-4" />
           </Button>
           <button
-            onClick={() => setPaletteOpen(true)}
+            onClick={() => navigate({ to: "/vault" })}
             className="flex h-9 w-full max-w-sm items-center gap-2 rounded-md border border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-ring/50"
           >
             <Search className="size-4" />
@@ -204,8 +201,6 @@ function AuthenticatedLayout() {
           <Outlet />
         </main>
       </div>
-
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }

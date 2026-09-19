@@ -28,7 +28,7 @@ export async function logAudit(input: AuditInput): Promise<void> {
     entity_type: input.entityType,
     entity_id: input.entityId ?? null,
     entity_name: input.entityName ?? null,
-    metadata: sanitize(input.metadata),
+    metadata: sanitize(input.metadata) as any,
   });
   if (error) console.error("[audit] failed to write audit log", error.message);
 }

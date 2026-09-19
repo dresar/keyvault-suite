@@ -13,9 +13,20 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
+import { Route as AuthenticatedApiAccessRouteImport } from './routes/_authenticated/api-access'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedProvidersRouteImport } from './routes/_authenticated/providers'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedApiAccessNewRouteImport } from './routes/_authenticated/api-access/new'
+import { Route as AuthenticatedProvidersNewRouteImport } from './routes/_authenticated/providers/new'
 import { Route as AuthenticatedVaultIndexRouteImport } from './routes/_authenticated/vault/index'
+import { Route as AuthenticatedVaultIdRouteImport } from './routes/_authenticated/vault/$id'
+import { Route as AuthenticatedVaultExportRouteImport } from './routes/_authenticated/vault/export'
+import { Route as AuthenticatedVaultImportRouteImport } from './routes/_authenticated/vault/import'
+import { Route as AuthenticatedVaultNewRouteImport } from './routes/_authenticated/vault/new'
 import { Route as ApiPublicSetupAdminRouteImport } from './routes/api/public/setup-admin'
+import { Route as AuthenticatedVaultCollectionsNewRouteImport } from './routes/_authenticated/vault/collections/new'
 import { Route as ApiPublicV1CollectionsRouteImport } from './routes/api/public/v1/collections'
 import { Route as ApiPublicV1ProvidersRouteImport } from './routes/api/public/v1/providers'
 import { Route as ApiPublicV1UsageRouteImport } from './routes/api/public/v1/usage'
@@ -42,14 +53,68 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedApiAccessRoute = AuthenticatedApiAccessRouteImport.update({
+  id: '/api-access',
+  path: '/api-access',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProvidersRoute = AuthenticatedProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedApiAccessNewRoute =
+  AuthenticatedApiAccessNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedApiAccessRoute,
+  } as any)
+const AuthenticatedProvidersNewRoute =
+  AuthenticatedProvidersNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedProvidersRoute,
+  } as any)
 const AuthenticatedVaultIndexRoute = AuthenticatedVaultIndexRouteImport.update({
   id: '/vault/',
   path: '/vault/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVaultIdRoute = AuthenticatedVaultIdRouteImport.update({
+  id: '/vault/$id',
+  path: '/vault/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVaultExportRoute =
+  AuthenticatedVaultExportRouteImport.update({
+    id: '/vault/export',
+    path: '/vault/export',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedVaultImportRoute =
+  AuthenticatedVaultImportRouteImport.update({
+    id: '/vault/import',
+    path: '/vault/import',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedVaultNewRoute = AuthenticatedVaultNewRouteImport.update({
+  id: '/vault/new',
+  path: '/vault/new',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicSetupAdminRoute = ApiPublicSetupAdminRouteImport.update({
@@ -57,6 +122,12 @@ const ApiPublicSetupAdminRoute = ApiPublicSetupAdminRouteImport.update({
   path: '/api/public/setup-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedVaultCollectionsNewRoute =
+  AuthenticatedVaultCollectionsNewRouteImport.update({
+    id: '/vault/collections/new',
+    path: '/vault/collections/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicV1CollectionsRoute = ApiPublicV1CollectionsRouteImport.update({
   id: '/api/public/v1/collections',
   path: '/api/public/v1/collections',
@@ -92,9 +163,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/activity': typeof AuthenticatedActivityRoute
+  '/api-access': typeof AuthenticatedApiAccessRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/providers': typeof AuthenticatedProvidersRouteWithChildren
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/api-access/new': typeof AuthenticatedApiAccessNewRoute
+  '/providers/new': typeof AuthenticatedProvidersNewRoute
+  '/vault/$id': typeof AuthenticatedVaultIdRoute
+  '/vault/export': typeof AuthenticatedVaultExportRoute
+  '/vault/import': typeof AuthenticatedVaultImportRoute
+  '/vault/new': typeof AuthenticatedVaultNewRoute
   '/api/public/setup-admin': typeof ApiPublicSetupAdminRoute
   '/vault/': typeof AuthenticatedVaultIndexRoute
+  '/vault/collections/new': typeof AuthenticatedVaultCollectionsNewRoute
   '/api/public/v1/collections': typeof ApiPublicV1CollectionsRoute
   '/api/public/v1/providers': typeof ApiPublicV1ProvidersRoute
   '/api/public/v1/usage': typeof ApiPublicV1UsageRoute
@@ -106,9 +188,20 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/activity': typeof AuthenticatedActivityRoute
+  '/api-access': typeof AuthenticatedApiAccessRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/providers': typeof AuthenticatedProvidersRouteWithChildren
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/api-access/new': typeof AuthenticatedApiAccessNewRoute
+  '/providers/new': typeof AuthenticatedProvidersNewRoute
+  '/vault/$id': typeof AuthenticatedVaultIdRoute
+  '/vault/export': typeof AuthenticatedVaultExportRoute
+  '/vault/import': typeof AuthenticatedVaultImportRoute
+  '/vault/new': typeof AuthenticatedVaultNewRoute
   '/api/public/setup-admin': typeof ApiPublicSetupAdminRoute
   '/vault': typeof AuthenticatedVaultIndexRoute
+  '/vault/collections/new': typeof AuthenticatedVaultCollectionsNewRoute
   '/api/public/v1/collections': typeof ApiPublicV1CollectionsRoute
   '/api/public/v1/providers': typeof ApiPublicV1ProvidersRoute
   '/api/public/v1/usage': typeof ApiPublicV1UsageRoute
@@ -122,9 +215,20 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/activity': typeof AuthenticatedActivityRoute
+  '/_authenticated/api-access': typeof AuthenticatedApiAccessRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/providers': typeof AuthenticatedProvidersRouteWithChildren
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/api-access/new': typeof AuthenticatedApiAccessNewRoute
+  '/_authenticated/providers/new': typeof AuthenticatedProvidersNewRoute
+  '/_authenticated/vault/$id': typeof AuthenticatedVaultIdRoute
+  '/_authenticated/vault/export': typeof AuthenticatedVaultExportRoute
+  '/_authenticated/vault/import': typeof AuthenticatedVaultImportRoute
+  '/_authenticated/vault/new': typeof AuthenticatedVaultNewRoute
   '/api/public/setup-admin': typeof ApiPublicSetupAdminRoute
   '/_authenticated/vault/': typeof AuthenticatedVaultIndexRoute
+  '/_authenticated/vault/collections/new': typeof AuthenticatedVaultCollectionsNewRoute
   '/api/public/v1/collections': typeof ApiPublicV1CollectionsRoute
   '/api/public/v1/providers': typeof ApiPublicV1ProvidersRoute
   '/api/public/v1/usage': typeof ApiPublicV1UsageRoute
@@ -138,9 +242,20 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/activity'
+    | '/api-access'
     | '/dashboard'
+    | '/providers'
+    | '/settings'
+    | '/api-access/new'
+    | '/providers/new'
+    | '/vault/$id'
+    | '/vault/export'
+    | '/vault/import'
+    | '/vault/new'
     | '/api/public/setup-admin'
     | '/vault/'
+    | '/vault/collections/new'
     | '/api/public/v1/collections'
     | '/api/public/v1/providers'
     | '/api/public/v1/usage'
@@ -152,9 +267,20 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/activity'
+    | '/api-access'
     | '/dashboard'
+    | '/providers'
+    | '/settings'
+    | '/api-access/new'
+    | '/providers/new'
+    | '/vault/$id'
+    | '/vault/export'
+    | '/vault/import'
+    | '/vault/new'
     | '/api/public/setup-admin'
     | '/vault'
+    | '/vault/collections/new'
     | '/api/public/v1/collections'
     | '/api/public/v1/providers'
     | '/api/public/v1/usage'
@@ -167,9 +293,20 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/activity'
+    | '/_authenticated/api-access'
     | '/_authenticated/dashboard'
+    | '/_authenticated/providers'
+    | '/_authenticated/settings'
+    | '/_authenticated/api-access/new'
+    | '/_authenticated/providers/new'
+    | '/_authenticated/vault/$id'
+    | '/_authenticated/vault/export'
+    | '/_authenticated/vault/import'
+    | '/_authenticated/vault/new'
     | '/api/public/setup-admin'
     | '/_authenticated/vault/'
+    | '/_authenticated/vault/collections/new'
     | '/api/public/v1/collections'
     | '/api/public/v1/providers'
     | '/api/public/v1/usage'
@@ -222,12 +359,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/activity': {
+      id: '/_authenticated/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AuthenticatedActivityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/api-access': {
+      id: '/_authenticated/api-access'
+      path: '/api-access'
+      fullPath: '/api-access'
+      preLoaderRoute: typeof AuthenticatedApiAccessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/providers': {
+      id: '/_authenticated/providers'
+      path: '/providers'
+      fullPath: '/providers'
+      preLoaderRoute: typeof AuthenticatedProvidersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/api-access/new': {
+      id: '/_authenticated/api-access/new'
+      path: '/new'
+      fullPath: '/api-access/new'
+      preLoaderRoute: typeof AuthenticatedApiAccessNewRouteImport
+      parentRoute: typeof AuthenticatedApiAccessRoute
+    }
+    '/_authenticated/providers/new': {
+      id: '/_authenticated/providers/new'
+      path: '/new'
+      fullPath: '/providers/new'
+      preLoaderRoute: typeof AuthenticatedProvidersNewRouteImport
+      parentRoute: typeof AuthenticatedProvidersRoute
     }
     '/_authenticated/vault/': {
       id: '/_authenticated/vault/'
@@ -236,12 +415,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVaultIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/vault/$id': {
+      id: '/_authenticated/vault/$id'
+      path: '/vault/$id'
+      fullPath: '/vault/$id'
+      preLoaderRoute: typeof AuthenticatedVaultIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/vault/export': {
+      id: '/_authenticated/vault/export'
+      path: '/vault/export'
+      fullPath: '/vault/export'
+      preLoaderRoute: typeof AuthenticatedVaultExportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/vault/import': {
+      id: '/_authenticated/vault/import'
+      path: '/vault/import'
+      fullPath: '/vault/import'
+      preLoaderRoute: typeof AuthenticatedVaultImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/vault/new': {
+      id: '/_authenticated/vault/new'
+      path: '/vault/new'
+      fullPath: '/vault/new'
+      preLoaderRoute: typeof AuthenticatedVaultNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/setup-admin': {
       id: '/api/public/setup-admin'
       path: '/api/public/setup-admin'
       fullPath: '/api/public/setup-admin'
       preLoaderRoute: typeof ApiPublicSetupAdminRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/vault/collections/new': {
+      id: '/_authenticated/vault/collections/new'
+      path: '/vault/collections/new'
+      fullPath: '/vault/collections/new'
+      preLoaderRoute: typeof AuthenticatedVaultCollectionsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/v1/collections': {
       id: '/api/public/v1/collections'
@@ -288,14 +502,60 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedApiAccessRouteChildren {
+  AuthenticatedApiAccessNewRoute: typeof AuthenticatedApiAccessNewRoute
+}
+
+const AuthenticatedApiAccessRouteChildren: AuthenticatedApiAccessRouteChildren =
+  {
+    AuthenticatedApiAccessNewRoute: AuthenticatedApiAccessNewRoute,
+  }
+
+const AuthenticatedApiAccessRouteWithChildren =
+  AuthenticatedApiAccessRoute._addFileChildren(
+    AuthenticatedApiAccessRouteChildren,
+  )
+
+interface AuthenticatedProvidersRouteChildren {
+  AuthenticatedProvidersNewRoute: typeof AuthenticatedProvidersNewRoute
+}
+
+const AuthenticatedProvidersRouteChildren: AuthenticatedProvidersRouteChildren =
+  {
+    AuthenticatedProvidersNewRoute: AuthenticatedProvidersNewRoute,
+  }
+
+const AuthenticatedProvidersRouteWithChildren =
+  AuthenticatedProvidersRoute._addFileChildren(
+    AuthenticatedProvidersRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
+  AuthenticatedApiAccessRoute: typeof AuthenticatedApiAccessRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedProvidersRoute: typeof AuthenticatedProvidersRouteWithChildren
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedVaultIdRoute: typeof AuthenticatedVaultIdRoute
+  AuthenticatedVaultExportRoute: typeof AuthenticatedVaultExportRoute
+  AuthenticatedVaultImportRoute: typeof AuthenticatedVaultImportRoute
+  AuthenticatedVaultNewRoute: typeof AuthenticatedVaultNewRoute
   AuthenticatedVaultIndexRoute: typeof AuthenticatedVaultIndexRoute
+  AuthenticatedVaultCollectionsNewRoute: typeof AuthenticatedVaultCollectionsNewRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedActivityRoute: AuthenticatedActivityRoute,
+  AuthenticatedApiAccessRoute: AuthenticatedApiAccessRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedProvidersRoute: AuthenticatedProvidersRouteWithChildren,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedVaultIdRoute: AuthenticatedVaultIdRoute,
+  AuthenticatedVaultExportRoute: AuthenticatedVaultExportRoute,
+  AuthenticatedVaultImportRoute: AuthenticatedVaultImportRoute,
+  AuthenticatedVaultNewRoute: AuthenticatedVaultNewRoute,
   AuthenticatedVaultIndexRoute: AuthenticatedVaultIndexRoute,
+  AuthenticatedVaultCollectionsNewRoute: AuthenticatedVaultCollectionsNewRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

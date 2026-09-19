@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Download,
+  FolderPlus,
   KeyRound,
-  Loader2,
   Pencil,
-  Plug,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   Upload,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -26,49 +27,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { EmptyState } from "@/components/vault/EmptyState";
 import { ProviderIcon } from "@/components/vault/ProviderIcon";
-import { StatusBadge, TestBadge } from "@/components/vault/StatusBadge";
-import { KeyDrawer } from "@/components/vault/KeyDrawer";
-import { ImportDrawer } from "@/components/vault/ImportDrawer";
-import { ExportDrawer } from "@/components/vault/ExportDrawer";
-import { collectionsQuery, keysQuery, providersQuery, type KeyRow } from "@/lib/queries";
-import { ENVIRONMENTS, effectiveStatus } from "@/lib/vault-constants";
-import { bulkKeyAction } from "@/lib/vault.functions";
+import { StatusBadge } from "@/components/vault/StatusBadge";
+import {
+  getKeysListFn,
+  bulkKeyActionFn,
+} from "@/lib/neon-vault.functions";
 
-type VaultSearch = { action?: string; collection?: string; q?: string };
+type VaultSearch = { collection?: string | undefined; q?: string | undefined };
 
 export const Route = createFileRoute("/_authenticated/vault/")({
   validateSearch: (search: Record<string, unknown>): VaultSearch => ({
-    action: typeof search['action'] === "string" ? search['action'] : undefined,
     collection: typeof search['collection'] === "string" ? search['collection'] : undefined,
     q: typeof search['q'] === "string" ? search['q'] : undefined,
   }),
   head: () => ({
     meta: [
       { title: "Vault · KeyVault" },
-      { name: "description", content: "Browse, filter and manage every credential you store." },
-      { property: "og:title", content: "Vault · KeyVault" },
-      {
-        property: "og:description",
-        content: "Browse, filter and manage every credential you store.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "description", content: "Browse and manage API credentials." },
     ],
   }),
   component: VaultPage,
 });
+
+type KeyItem = {
+  id: string;
+  name: string;
+  environment: string;
+  status: string;
+  tags: string[] | null;
+  usage_count: number;
+  last_used_at: string | null;
+  secret_hint: string;
+  version: number;
+  created_at: string;
+  provider_id: string;
+  provider_name: string;
+  provider_slug: string;
+  icon_url: string | null;
+  collection_id: string | null;
+  collection_name: string | null;
+  collection_color: string | null;
+};
 
 const PAGE_SIZE = 20;
 
@@ -76,11 +76,9 @@ function VaultPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const bulk = useServerFn(bulkKeyAction);
 
-  const keys = useQuery(keysQuery);
-  const { data: providers = [] } = useQuery(providersQuery);
-  const { data: collections = [] } = useQuery(collectionsQuery);
+  const fetchKeys = useServerFn(getKeysListFn);
+  const runBulk = useServerFn(bulkKeyActionFn);
 
   const [query, setQuery] = useState(search.q ?? "");
   const [provider, setProvider] = useState("all");
@@ -89,370 +87,390 @@ function VaultPage() {
   const [collection, setCollection] = useState(search.collection ?? "all");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
-  const [editing, setEditing] = useState<KeyRow | null>(null);
-  const [keyDrawer, setKeyDrawer] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (search.action === "new") setKeyDrawer(true);
-    if (search.action === "import") setImportOpen(true);
-    if (search.action === "export") setExportOpen(true);
-    if (search.action) navigate({ to: "/vault", search: {}, replace: true });
-  }, [search.action, navigate]);
+  const { data: vaultData, isLoading: loadingKeys, refetch } = useQuery({
+    queryKey: ["neon-keys"],
+    queryFn: () => fetchKeys(),
+  });
 
-  const providerById = useMemo(() => new Map(providers.map((p) => [p.id, p])), [providers]);
+  const keysList = (vaultData?.keys ?? []) as KeyItem[];
+  const providers = (vaultData?.providers ?? []) as Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }>;
+  const collections = (vaultData?.collections ?? []) as Array<{
+    id: string;
+    name: string;
+    color: string | null;
+  }>;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (keys.data ?? []).filter((row) => {
-      if (provider !== "all" && row.provider_id !== provider) return false;
+    return keysList.filter((row) => {
+      if (provider !== "all" && row.provider_slug !== provider) return false;
       if (environment !== "all" && row.environment !== environment) return false;
       if (collection !== "all" && row.collection_id !== collection) return false;
-      if (status !== "all" && effectiveStatus(row) !== status) return false;
+      if (status !== "all" && row.status !== status) return false;
       if (!q) return true;
-      const p = providerById.get(row.provider_id);
-      return [row.name, row.actor ?? "", row.description ?? "", p?.name ?? "", ...row.tags]
+      return [
+        row.name,
+        row.provider_name || "",
+        row.provider_slug || "",
+        row.secret_hint || "",
+        ...(row.tags || []),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [keys.data, query, provider, environment, collection, status, providerById]);
+  }, [keysList, query, provider, environment, collection, status]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const allChecked = current.length > 0 && current.every((r) => selected.includes(r.id));
 
-  async function runBulk(action: string, extra: Record<string, unknown> = {}) {
-    setBusy(true);
+  const handleBulk = async (action: "enable" | "disable" | "delete") => {
+    if (selected.length === 0) return;
     try {
-      const res = await bulk({ data: { ids: selected, action, ...extra } as never });
-      toast.success(`${res.affected} credential(s) updated`);
+      setBusy(true);
+      const res = await runBulk({ data: { ids: selected, action } });
+      toast.success(`${res.affected} updated`);
       setSelected([]);
-      qc.invalidateQueries({ queryKey: ["keys"] });
-      qc.invalidateQueries({ queryKey: ["audit"] });
+      qc.invalidateQueries({ queryKey: ["neon-keys"] });
+      qc.invalidateQueries({ queryKey: ["neon-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["neon-activity"] });
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error(err instanceof Error ? err.message : "Action failed");
     } finally {
       setBusy(false);
-      setConfirmDelete(false);
     }
-  }
+  };
 
   const hasFilters =
     query || provider !== "all" || environment !== "all" || status !== "all" || collection !== "all";
 
+  const clearFilters = () => {
+    setQuery("");
+    setProvider("all");
+    setEnvironment("all");
+    setStatus("all");
+    setCollection("all");
+  };
+
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Vault</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Vault</h1>
           <p className="text-sm text-muted-foreground">
-            {filtered.length} of {keys.data?.length ?? 0} credentials
+            {filtered.length} credentials stored in Neon
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <Upload className="size-4" /> Import
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/vault/import" className="gap-1.5">
+              <Upload className="size-3.5" />
+              Import
+            </Link>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
-            <Download className="size-4" /> Export
+          <Button asChild variant="outline" size="sm">
+            <Link to="/vault/export" className="gap-1.5">
+              <Download className="size-3.5" />
+              Export
+            </Link>
           </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null);
-              setKeyDrawer(true);
-            }}
-          >
-            <Plus className="size-4" /> Add credential
+          <Button asChild variant="outline" size="sm">
+            <Link to="/vault/collections/new" className="gap-1.5">
+              <FolderPlus className="size-3.5" />
+              Collection
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/vault/new" className="gap-1.5">
+              <Plus className="size-3.5" />
+              New Key
+            </Link>
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2.5">
-        <div className="relative min-w-48 flex-1">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setPage(1);
             }}
-            placeholder="Search name, actor, tag…"
-            className="h-9 pl-8"
+            placeholder="Search"
+            className="pl-8 text-sm"
           />
         </div>
-        <Select value={provider} onValueChange={(v) => { setProvider(v); setPage(1); }}>
-          <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Provider" /></SelectTrigger>
+
+        <Select
+          value={provider}
+          onValueChange={(v) => {
+            setProvider(v);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[140px] text-xs">
+            <SelectValue placeholder="Provider" />
+          </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All providers</SelectItem>
+            <SelectItem value="all">All Providers</SelectItem>
             {providers.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              <SelectItem key={p.id} value={p.slug}>
+                {p.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={environment} onValueChange={(v) => { setEnvironment(v); setPage(1); }}>
-          <SelectTrigger className="h-9 w-36"><SelectValue placeholder="Environment" /></SelectTrigger>
+
+        <Select
+          value={environment}
+          onValueChange={(v) => {
+            setEnvironment(v);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[130px] text-xs">
+            <SelectValue placeholder="Environment" />
+          </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All environments</SelectItem>
-            {ENVIRONMENTS.map((e) => (
-              <SelectItem key={e} value={e}>{e}</SelectItem>
-            ))}
+            <SelectItem value="all">All Envs</SelectItem>
+            <SelectItem value="production">Production</SelectItem>
+            <SelectItem value="staging">Staging</SelectItem>
+            <SelectItem value="development">Development</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="h-9 w-32"><SelectValue placeholder="Status" /></SelectTrigger>
+
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[120px] text-xs">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {["active", "expiring", "expired", "disabled", "revoked"].map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="disabled">Disabled</SelectItem>
+            <SelectItem value="revoked">Revoked</SelectItem>
           </SelectContent>
         </Select>
-        {collections.length > 0 ? (
-          <Select value={collection} onValueChange={(v) => { setCollection(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Collection" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All collections</SelectItem>
-              {collections.map((c) => (
-                <SelectItem key={c.id as string} value={c.id as string}>{c.name as string}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
-        {hasFilters ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setQuery("");
-              setProvider("all");
-              setEnvironment("all");
-              setStatus("all");
-              setCollection("all");
+
+        {collections.length > 0 && (
+          <Select
+            value={collection}
+            onValueChange={(v) => {
+              setCollection(v);
               setPage(1);
             }}
           >
-            <X className="size-4" /> Clear
+            <SelectTrigger className="w-[140px] text-xs">
+              <SelectValue placeholder="Collection" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Collections</SelectItem>
+              {collections.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5 mr-1" />
+            Clear
           </Button>
-        ) : null}
+        )}
       </div>
 
-      {selected.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm">
-          <span className="font-medium">{selected.length} selected</span>
-          <div className="ml-auto flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("enable")}>
+      {selected.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/60 px-4 py-2.5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-medium">
+            <span>{selected.length} selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulk("enable")}
+              disabled={busy}
+              className="h-8 text-xs"
+            >
               Enable
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("disable")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulk("disable")}
+              disabled={busy}
+              className="h-8 text-xs"
+            >
               Disable
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
-              Export
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleBulk("delete")}
+              disabled={busy}
+              className="h-8 text-xs gap-1"
+            >
+              <Trash2 className="size-3" />
+              Delete
             </Button>
             <Button
+              variant="ghost"
               size="sm"
-              variant="destructive"
-              disabled={busy}
-              onClick={() => setConfirmDelete(true)}
+              onClick={() => setSelected([])}
+              className="h-8 text-xs"
             >
-              <Trash2 className="size-4" /> Revoke
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
               Cancel
             </Button>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        {keys.isLoading ? (
-          <div className="space-y-2 p-4">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-11 w-full" />
-            ))}
+      {loadingKeys ? (
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-12 text-center">
+          <KeyRound className="size-10 text-muted-foreground/50" />
+          <h3 className="mt-4 text-base font-semibold">No credentials</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {hasFilters ? "Try adjusting your search or filters" : "Get started by adding your first secret key"}
+          </p>
+          <div className="mt-6 flex gap-2">
+            {hasFilters ? (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Reset Filters
+              </Button>
+            ) : (
+              <Button asChild size="sm">
+                <Link to="/vault/new">Add Key</Link>
+              </Button>
+            )}
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-4">
-            <EmptyState
-              icon={KeyRound}
-              title={hasFilters ? "No matching credentials" : "Your vault is empty"}
-              description={
-                hasFilters
-                  ? "Adjust or clear the filters to see more results."
-                  : "Add a credential manually or import an existing set."
-              }
-            >
-              {hasFilters ? null : (
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setKeyDrawer(true)}>
-                    <Plus className="size-4" /> Add credential
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                    <Upload className="size-4" /> Import
-                  </Button>
-                </div>
-              )}
-            </EmptyState>
-          </div>
-        ) : (
-          <>
-            <div className="hidden items-center gap-3 border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground md:flex">
-              <Checkbox
-                checked={allChecked}
-                onCheckedChange={(v) =>
-                  setSelected(
-                    v
-                      ? [...new Set([...selected, ...current.map((r) => r.id)])]
-                      : selected.filter((id) => !current.some((r) => r.id === id)),
-                  )
-                }
-              />
-              <span className="flex-1">Credential</span>
-              <span className="w-28">Environment</span>
-              <span className="w-24">Secret</span>
-              <span className="w-24">Test</span>
-              <span className="w-24">Status</span>
-              <span className="w-16" />
-            </div>
-            <ul className="divide-y divide-border">
-              {current.map((row) => {
-                const p = providerById.get(row.provider_id);
-                return (
-                  <li
-                    key={row.id}
-                    className="flex flex-wrap items-center gap-3 px-4 py-2.5 hover:bg-secondary/50 md:flex-nowrap"
-                  >
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="divide-y divide-border">
+            {current.map((row) => {
+              const isChecked = selected.includes(row.id);
+              return (
+                <div
+                  key={row.id}
+                  className={`flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-muted/40 ${
+                    isChecked ? "bg-muted/30" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
                     <Checkbox
-                      checked={selected.includes(row.id)}
-                      onCheckedChange={(v) =>
-                        setSelected(
-                          v ? [...selected, row.id] : selected.filter((id) => id !== row.id),
-                        )
-                      }
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        setSelected((prev) =>
+                          checked ? [...prev, row.id] : prev.filter((id) => id !== row.id)
+                        );
+                      }}
+                      aria-label={`Select ${row.name}`}
                     />
-                    <Link
-                      to="/vault/$id"
-                      params={{ id: row.id }}
-                      className="flex min-w-0 flex-1 items-center gap-2.5"
-                    >
-                      <ProviderIcon
-                        size="sm"
-                        name={p?.name ?? "?"}
-                        slug={p?.slug ?? "?"}
-                        iconUrl={p?.icon_url}
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">{row.name}</span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {p?.name ?? "Unknown"}
-                          {row.actor ? ` · ${row.actor}` : ""}
-                          {row.tags.length ? ` · ${row.tags.join(", ")}` : ""}
-                        </span>
-                      </span>
-                    </Link>
-                    <span className="w-28 text-xs capitalize text-muted-foreground">
-                      {row.environment}
-                    </span>
-                    <span className="w-24 truncate font-mono text-xs text-muted-foreground">
-                      {row.secret_hint || "••••"}
-                    </span>
-                    <span className="w-24">
-                      <TestBadge status={row.last_test_status} />
-                    </span>
-                    <span className="w-24">
-                      <StatusBadge row={row} />
-                    </span>
-                    <span className="w-16 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8"
-                        aria-label={`Edit ${row.name}`}
-                        onClick={() => {
-                          setEditing(row);
-                          setKeyDrawer(true);
-                        }}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            {pageCount > 1 ? (
-              <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-sm">
-                <span className="text-xs text-muted-foreground">
-                  Page {page} of {pageCount}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={page === pageCount}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
+                    <ProviderIcon name={row.provider_name} slug={row.provider_slug} className="size-5 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to="/vault/$id"
+                          params={{ id: row.id }}
+                          className="truncate text-sm font-semibold tracking-tight text-foreground hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                        <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
+                          {row.secret_hint}
+                        </Badge>
+                        <StatusBadge row={{ status: row.status, expires_at: null }} />
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>{row.provider_name}</span>
+                        <span>•</span>
+                        <span className="capitalize">{row.environment}</span>
+                        {row.collection_name && (
+                          <>
+                            <span>•</span>
+                            <span>{row.collection_name}</span>
+                          </>
+                        )}
+                        {row.usage_count > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{row.usage_count} calls</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-xs">
+                      <Link to="/vault/$id" params={{ id: row.id }} className="gap-1">
+                        <Pencil className="size-3" />
+                        Edit
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
+              <span>
+                Page {page} of {pageCount}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="h-7 text-xs"
+                >
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  disabled={page === pageCount}
+                  className="h-7 text-xs"
+                >
+                  Next
+                </Button>
               </div>
-            ) : null}
-          </>
-        )}
-      </div>
-
-      {providers.length === 0 && !keys.isLoading ? (
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Plug className="size-3.5" /> Provider catalog is loading or unavailable.
-        </p>
-      ) : null}
-
-      <KeyDrawer
-        open={keyDrawer}
-        onOpenChange={(v) => {
-          setKeyDrawer(v);
-          if (!v) setEditing(null);
-        }}
-        editing={editing}
-      />
-      <ImportDrawer open={importOpen} onOpenChange={setImportOpen} />
-      <ExportDrawer
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-        selectedIds={selected.length ? selected : undefined}
-      />
-
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Revoke {selected.length} credential(s)?</AlertDialogTitle>
-            <AlertDialogDescription>
-              They stop being served through the API immediately and are removed from your vault
-              list. The action is recorded in your audit log.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => runBulk("delete")}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              Revoke
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
